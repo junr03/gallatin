@@ -14,9 +14,6 @@ import re
 import hashlib
 from tqdm import tqdm
 
-# Supported picture file extensions
-PICTURE_EXTENSIONS = '*.{cr3,CR3,HEIC,JPG}'
-
 def get_file_hash(file_path, chunk_size=8192):
     """
     Get a hash of the first few chunks of the file for deterministic ordering.
@@ -73,14 +70,14 @@ def rename_picture_files(directory, dry_run=False):
         print(f"Error: Directory '{directory}' does not exist.")
         return
     
-    # Find all picture files with specified extensions
-    picture_files = list(directory.glob(PICTURE_EXTENSIONS))
+    # Find all picture files with .cr3, .CR3, .HEIC, .JPG extension
+    picture_files = list(directory.glob('*.cr3')) + list(directory.glob('*.CR3')) + list(directory.glob('*.HEIC')) + list(directory.glob('*.JPG'))
     
     if not picture_files:
-        print(f"No picture files found in '{directory}'")
+        print(f"No .cr3/.CR3/.HEIC/.JPG files found in '{directory}'")
         return
     
-    print(f"Found {len(picture_files)} picture files")
+    print(f"Found {len(picture_files)} .cr3/.CR3/.HEIC/.JPG files")
     
     renamed_count = 0
     skipped_count = 0
@@ -152,7 +149,7 @@ Examples:
         'directory',
         nargs='?',
         default='.',
-        help='Directory containing picture files (default: current directory)'
+        help='Directory containing .cr3/.CR3/.HEIC/.JPG files (default: current directory)'
     )
     
     parser.add_argument(
