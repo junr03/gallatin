@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-Script to rename .cr3/.CR3 files using datetime from EXIF data.
-Usage: rename_cr3.py [directory] [--dry-run]
+Script to rename picture files using datetime from EXIF data.
+Usage: rename_picture.py [directory] [--dry-run]
 """
 
 import os
@@ -40,7 +40,7 @@ def get_file_hash(file_path, chunk_size=8192):
 
 def get_exif_datetime(file_path):
     """
-    Extract datetime from CR3 file using exiftool.
+    Extract datetime from picture file using exiftool.
     Returns a string in the format YYYYmmdd_HHMMSS.
     """
     try:
@@ -62,29 +62,29 @@ def get_exif_datetime(file_path):
     except (subprocess.CalledProcessError, FileNotFoundError):
         return None
 
-def rename_cr3_files(directory, dry_run=False):
-    """Rename .cr3/.CR3 files in the specified directory."""
+def rename_picture_files(directory, dry_run=False):
+    """Rename picture files in the specified directory."""
     directory = Path(directory)
     
     if not directory.exists():
         print(f"Error: Directory '{directory}' does not exist.")
         return
     
-    # Find all .cr3 and .CR3 files
-    cr3_files = list(directory.glob('*.cr3')) + list(directory.glob('*.CR3'))
+    # Find all picture files with .cr3, .CR3, .HEIC, .JPG extension
+    picture_files = list(directory.glob('*.cr3')) + list(directory.glob('*.CR3')) + list(directory.glob('*.HEIC')) + list(directory.glob('*.JPG'))
     
-    if not cr3_files:
-        print(f"No .cr3/.CR3 files found in '{directory}'")
+    if not picture_files:
+        print(f"No .cr3/.CR3/.HEIC/.JPG files found in '{directory}'")
         return
     
-    print(f"Found {len(cr3_files)} .cr3/.CR3 files")
+    print(f"Found {len(picture_files)} .cr3/.CR3/.HEIC/.JPG files")
     
     renamed_count = 0
     skipped_count = 0
     
     # Create progress bar
-    with tqdm(total=len(cr3_files), desc="Processing files", unit="file") as pbar:
-        for file_path in cr3_files:
+    with tqdm(total=len(picture_files), desc="Processing files", unit="file") as pbar:
+        for file_path in picture_files:
             pbar.set_description(f"Processing {file_path.name}")
             
             # Get datetime from EXIF
@@ -100,8 +100,11 @@ def rename_cr3_files(directory, dry_run=False):
             file_hash = get_file_hash(file_path)
             hash_suffix = file_hash[:6]  # Use first 6 characters of hash
             
-            # Create new filename with hash suffix
-            new_filename = f"junr_{datetime_str}_{hash_suffix}.cr3"
+            # Get the original file extension
+            original_extension = file_path.suffix
+
+            # Create new filename with original extension
+            new_filename = f"junr_{datetime_str}_{hash_suffix}{original_extension}"
             new_path = file_path.parent / new_filename
             
             # Check if target file already exists
@@ -132,13 +135,13 @@ def rename_cr3_files(directory, dry_run=False):
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Rename .cr3/.CR3 files using datetime from EXIF data",
+        description="Rename picture files using datetime from EXIF data",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  rename_cr3.py /path/to/photos
-  rename_cr3.py . --dry-run
-  rename_cr3.py /Volumes/photos-raw/raw/
+  rename_picture.py /path/to/photos
+  rename_picture.py . --dry-run
+  rename_picture.py /Volumes/photos-raw/raw/
         """
     )
     
@@ -146,7 +149,7 @@ Examples:
         'directory',
         nargs='?',
         default='.',
-        help='Directory containing .cr3/.CR3 files (default: current directory)'
+        help='Directory containing .cr3/.CR3/.HEIC/.JPG files (default: current directory)'
     )
     
     parser.add_argument(
@@ -165,7 +168,7 @@ Examples:
         print("Install it with: brew install exiftool")
         sys.exit(1)
     
-    rename_cr3_files(args.directory, args.dry_run)
+    rename_picture_files(args.directory, args.dry_run)
 
 if __name__ == '__main__':
     main()
