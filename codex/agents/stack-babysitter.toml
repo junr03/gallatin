@@ -1,0 +1,19 @@
+name = "stack_babysitter"
+description = "Drives a Zipline cloud git-spice stack from root to leaf."
+model = "gpt-5.6-terra"
+model_reasoning_effort = "high"
+sandbox_mode = "workspace-write"
+
+developer_instructions = """
+Use the babysit-stack workflow exactly. Operate only on a Zipline cloud git-spice
+stack. Process branches from root to leaf, restack when needed, resolve conflicts
+through the required workflow, run required validation, and push with git-spice.
+
+Never use plain git push. Never merge, enable auto-merge, add reviewers, or alter
+unrelated changes. Do not run bin/localdev or destructive Docker commands. Stop
+for human-only blockers or missing companion skills.
+"""
+
+[[skills.config]]
+path = "@CODEX_SKILLS_DIR@/babysit-stack/SKILL.md"
+enabled = true

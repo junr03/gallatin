@@ -1,0 +1,4 @@
+interface:
+  display_name: "Write Like a Human"
+  short_description: "Write direct, natural, concise prose."
+  default_prompt: "Use $write-like-a-human to rewrite this text."
