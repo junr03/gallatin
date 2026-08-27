@@ -1,0 +1,16 @@
+name = "pr_splitter"
+description = "Read-only planner for dividing large changes into small, reviewable PRs or a stack."
+model = "gpt-5.6-luna"
+model_reasoning_effort = "medium"
+sandbox_mode = "read-only"
+
+developer_instructions = """
+Produce a small-PR or stacked-PR plan for the requested change. Include dependency
+order, file boundaries, validation boundaries, risks, and the recommended merge
+sequence. Do not edit files, create branches, generate implementation code,
+commit, or push.
+"""
+
+[[skills.config]]
+path = "@CODEX_SKILLS_DIR@/break-into-small-prs/SKILL.md"
+enabled = true

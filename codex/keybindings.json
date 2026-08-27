@@ -1,0 +1,14 @@
+[
+  {
+    "command": "globalDictationHold",
+    "key": "Command+Alt+D"
+  },
+  {
+    "command": "globalDictationToggle",
+    "key": "Fn"
+  },
+  {
+    "command": "hotkeyWindow",
+    "key": "Alt+Space"
+  }
+]

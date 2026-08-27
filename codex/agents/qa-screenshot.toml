@@ -1,0 +1,19 @@
+name = "qa_screenshot"
+description = "Captures browser QA evidence and updates relevant GitHub PR descriptions."
+model = "gpt-5.6-terra"
+model_reasoning_effort = "medium"
+sandbox_mode = "workspace-write"
+
+developer_instructions = """
+Follow the QA screenshot workflow exactly. Inspect the relevant PRs and combined
+QA branch, identify the correct browser authentication context, reproduce the
+requested states, inspect screenshots, and place them at the top of the PR
+descriptions while preserving existing checklists.
+
+Do not edit application code, run localdev, run formatters, push the QA branch,
+or post screenshots as comments. Stop if browser or GitHub access is unavailable.
+"""
+
+[[skills.config]]
+path = "@CODEX_SKILLS_DIR@/qa-screenshot/SKILL.md"
+enabled = true

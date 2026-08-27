@@ -1,0 +1,7 @@
+prefix_rule(pattern=["git", "fetch", "origin"], decision="allow")
+prefix_rule(pattern=["bin/format"], decision="allow")
+prefix_rule(pattern=["bin/dockershell", "bin/bazel", "test"], decision="allow")
+prefix_rule(pattern=["git", "rebase"], decision="allow")
+prefix_rule(pattern=["bin/dockershell", "/cloud/bin/format"], decision="allow")
+prefix_rule(pattern=["ssh", "devbox"], decision="allow")
+prefix_rule(pattern=["scp"], decision="allow")

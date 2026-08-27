@@ -1,0 +1,49 @@
+# Portable Codex settings shared by the Gallatin hosts.
+# Merge this fragment into each host's ~/.codex/config.toml. Keep project,
+# notification, desktop, plugin, and local executable settings host-specific.
+
+approval_policy = "on-request"
+sandbox_mode = "workspace-write"
+model = "gpt-5.6-luna"
+model_reasoning_effort = "xhigh"
+personality = "pragmatic"
+
+[features]
+unified_exec = true
+shell_snapshot = true
+steer = true
+multi_agent = true
+exec_policy = true
+remote_compaction = true
+remote_models = true
+memories = true
+js_repl = false
+
+[notice]
+hide_full_access_warning = true
+
+[mcp_servers.incident_io]
+type = "url"
+url = "https://mcp.incident.io/mcp"
+
+[mcp_servers.honeycomb]
+type = "url"
+url = "https://mcp.honeycomb.io/mcp"
+
+[mcp_servers.launchdarkly]
+url = "https://mcp.launchdarkly.com/mcp/launchdarkly"
+
+[mcp_servers.openaiDeveloperDocs]
+url = "https://developers.openai.com/mcp"
+
+[mcp_servers.cloudflare]
+url = "https://mcp.cloudflare.com/mcp"
+auth = "oauth"
+
+[mcp_servers.todoist]
+url = "https://ai.todoist.net/mcp"
+auth = "oauth"
+
+[memories]
+generate_memories = true
+use_memories = true
