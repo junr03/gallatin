@@ -27,19 +27,35 @@ let
 in
 {
   home.file = {
-    ".codex/AGENTS.md".source = "${codexConfig}/AGENTS.md";
-    ".codex/agents".source = "${codexConfig}/agents";
-    ".codex/keybindings.json".source = "${codexConfig}/keybindings.json";
-    ".codex/rules".source = "${codexConfig}/rules";
+    ".codex/AGENTS.md" = {
+      source = "${codexConfig}/AGENTS.md";
+      force = true;
+    };
+    ".codex/agents" = {
+      source = "${codexConfig}/agents";
+      force = true;
+    };
+    ".codex/keybindings.json" = {
+      source = "${codexConfig}/keybindings.json";
+      force = true;
+    };
+    ".codex/rules" = {
+      source = "${codexConfig}/rules";
+      force = true;
+    };
   } // lib.mapAttrs' (
     name: _:
     lib.nameValuePair ".codex/skills/${name}" {
       source = "${codexConfig}/skills/${name}";
       recursive = true;
+      force = true;
     }
   ) (builtins.readDir "${codexConfig}/skills");
 }
 ```
+
+The `force` settings replace existing managed files and directories. They do
+not replace unrelated files under `~/.codex`, including runtime state.
 
 Merge `config.shared.toml` into each host's `~/.codex/config.toml`. Keep
 project-specific trust, notification, plugin, and local tool settings in the
