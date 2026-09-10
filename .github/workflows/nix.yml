@@ -25,6 +25,16 @@ jobs:
       - name: Check Nix formatting
         run: nix-shell -p nixfmt --run 'nixfmt --check $(git ls-files -- "*.nix")'
 
+      - name: Parse Nix files
+        run: |
+          while IFS= read -r file; do
+            nix-instantiate --parse "$file" >/dev/null
+          done < <(git ls-files -- "*.nix")
+
+      - name: Check runner flake
+        working-directory: runners
+        run: nix flake check --no-build --all-systems
+
   build:
     name: Build Nix files
     runs-on: ubuntu-latest
@@ -39,6 +49,6 @@ jobs:
 
       - name: Build Nix files
         run: |
-          while IFS= read -r file; do
+          for file in codex.nix rename-picture.nix runners/github-actions-runner.nix; do
             nix-build --no-out-link -E "with import <nixpkgs> {}; callPackage ./$file {}"
-          done < <(git ls-files -- "*.nix")
+          done
