@@ -1,7 +1,14 @@
 {
-  lib,
+  autoPatchelfHook,
+  curl,
   fetchurl,
+  icu,
+  krb5,
+  lib,
+  openssl,
+  stdenv,
   stdenvNoCC,
+  zlib,
 }:
 
 let
@@ -31,6 +38,21 @@ stdenvNoCC.mkDerivation {
   dontUnpack = true;
   dontBuild = true;
   dontConfigure = true;
+
+  nativeBuildInputs = lib.optional stdenv.hostPlatform.isLinux autoPatchelfHook;
+  buildInputs = lib.optionals stdenv.hostPlatform.isLinux [
+    stdenv.cc.cc
+    curl
+    icu
+    krb5
+    openssl
+    zlib
+  ];
+
+  autoPatchelfIgnoreMissingDeps = lib.optionals stdenv.hostPlatform.isLinux [
+    "libc.musl-x86_64.so.1"
+    "liblttng-ust.so.0"
+  ];
 
   installPhase = ''
     runHook preInstall

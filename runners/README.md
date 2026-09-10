@@ -45,9 +45,14 @@ Add the Gallatin flake as an input and import the module:
 }
 ```
 
-NixOS uses `LoadCredential` so the systemd service can read a short-lived
-registration token without putting it in the unit environment. The token file
-must be supplied by the private host configuration.
+NixOS uses a privileged one-shot bootstrap service for registration and keeps
+the long-running runner service credential-free. The token source must be
+root-readable and supplied by the private host configuration; it is read only
+when the runner has not yet been registered. The bootstrap also replaces the
+mutable runner tree when the pinned package version changes while preserving
+the registration state and `_work` directory. Set `protectHome = false` when
+using a work directory under `/home`; the default `/var/lib` location remains
+protected.
 
 ## macOS
 
@@ -62,17 +67,20 @@ private nix-darwin configuration:
     labels = [ "blacktail-macos" ];
     tokenFile = "/Users/blacktail-runner/registration-token";
     user = "blacktail-runner";
+    uid = 502;
     workDirectory = "/Users/blacktail-runner";
     preventSleep = true;
   };
 }
 ```
 
-The macOS module creates a hidden non-admin account, loads a root-owned
-launchd daemon under that account, and leaves personal SSH and 1Password agent
-variables out of the service environment. The token file must be readable by
-the runner account and should be removed after registration if the private host
-configuration does not need to retain it.
+The macOS module creates a hidden non-admin account and uses a root-owned
+launchd bootstrap daemon for registration and upgrades. The long-running
+runner daemon has no registration token, personal SSH agent, or 1Password
+agent environment. The token source must be root-readable; it is read only
+when registration is needed, while the temporary copy is removed afterward.
+`preventSleep` runs a scoped `caffeinate` daemon while the runner host is
+enabled, so normal sleep settings are restored when the module is disabled.
 
 ## Registration and health checks
 
