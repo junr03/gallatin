@@ -200,7 +200,7 @@ in
               UMask = "0077";
             };
             environment = {
-              PATH = runnerPath;
+              PATH = mkForce runnerPath;
             };
             script = ''
               ${bootstrapScript name runner}
