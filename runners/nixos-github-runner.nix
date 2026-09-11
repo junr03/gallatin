@@ -199,6 +199,9 @@ in
               ReadWritePaths = [ runner.workDirectory ];
               UMask = "0077";
             };
+            environment = {
+              PATH = runnerPath;
+            };
             script = ''
               ${bootstrapScript name runner}
             '';
