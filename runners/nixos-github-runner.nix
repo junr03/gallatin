@@ -195,6 +195,7 @@ in
               Group = "root";
               ProtectSystem = "strict";
               ProtectHome = runner.protectHome;
+              PrivateTmp = true;
               ReadWritePaths = [ runner.workDirectory ];
               UMask = "0077";
             };
