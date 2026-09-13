@@ -104,6 +104,13 @@ let
     ]
     + ":/usr/bin:/bin:/usr/sbin:/sbin";
 
+  runnerLibraryPath = lib.makeLibraryPath [
+    pkgs.icu
+    pkgs.krb5
+    pkgs.openssl
+    pkgs.zlib
+  ];
+
   bootstrapScript =
     name: runner:
     let
@@ -200,6 +207,7 @@ in
               UMask = "0077";
             };
             environment = {
+              LD_LIBRARY_PATH = mkForce runnerLibraryPath;
               PATH = mkForce runnerPath;
             };
             script = ''
@@ -223,6 +231,7 @@ in
             };
             environment = {
               HOME = runner.workDirectory;
+              LD_LIBRARY_PATH = mkForce runnerLibraryPath;
               PATH = mkForce runnerPath;
             };
             script = ''
