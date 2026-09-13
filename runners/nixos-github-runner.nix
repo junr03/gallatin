@@ -106,9 +106,6 @@ let
 
   runnerLibraryPath = lib.makeLibraryPath [
     pkgs.icu
-    pkgs.krb5
-    pkgs.openssl
-    pkgs.zlib
   ];
 
   bootstrapScript =
