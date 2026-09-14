@@ -29,14 +29,14 @@ Add the Gallatin flake as an input and import the module:
             enable = true;
             repository = "https://github.com/junr03/blacktail-sensitive";
             labels = [ "blacktail-control" ];
-            tokenFile = "/run/secrets/blacktail-control-registration-token";
+            accessTokenFile = "/run/secrets/blacktail-runner-access-token";
           };
 
           services.gallatin.githubActionsRunners.blacktail-linux = {
             enable = true;
             repository = "https://github.com/junr03/blacktail-sensitive";
             labels = [ "blacktail-linux" ];
-            tokenFile = "/run/secrets/blacktail-linux-registration-token";
+            accessTokenFile = "/run/secrets/blacktail-runner-access-token";
           };
         })
       ];
@@ -46,9 +46,10 @@ Add the Gallatin flake as an input and import the module:
 ```
 
 NixOS uses a privileged one-shot bootstrap service for registration and keeps
-the long-running runner service credential-free. The token source must be
-root-readable and supplied by the private host configuration; it is read only
-when the runner has not yet been registered. The bootstrap also replaces the
+the long-running runner service credential-free. The access-token source must
+be root-readable and supplied by the private host configuration; it is read
+only when the runner has not yet been registered. The bootstrap exchanges it
+for GitHub's short-lived registration token. The bootstrap also replaces the
 mutable runner tree when the pinned package version changes while preserving
 the registration state and `_work` directory. Set `protectHome = false` when
 using a work directory under `/home`; the default `/var/lib` location remains
@@ -65,7 +66,7 @@ private nix-darwin configuration:
     enable = true;
     repository = "https://github.com/junr03/blacktail-sensitive";
     labels = [ "blacktail-macos" ];
-    tokenFile = "/Users/blacktail-runner/registration-token";
+    accessTokenFile = "/private/var/db/blacktail-github-runner/access-token";
     user = "blacktail-runner";
     uid = 502;
     workDirectory = "/Users/blacktail-runner";
@@ -77,16 +78,19 @@ private nix-darwin configuration:
 The macOS module creates a hidden non-admin account and uses a root-owned
 launchd bootstrap daemon for registration and upgrades. The long-running
 runner daemon has no registration token, personal SSH agent, or 1Password
-agent environment. The token source must be root-readable; it is read only
-when registration is needed, while the temporary copy is removed afterward.
+agent environment. The access-token source must be root-readable; it is read
+only when registration is needed, while the generated registration token and
+temporary authorization header are removed afterward.
 `preventSleep` runs a scoped `caffeinate` daemon while the runner host is
 enabled, so normal sleep settings are restored when the module is disabled.
 
 ## Registration and health checks
 
-Create short-lived registration tokens from an authenticated administrator
-workstation. Never commit them to Gallatin. After deployment, verify the
-services locally and query GitHub:
+Provide a GitHub access token that can create runner registration tokens for the
+target repository. A fine-grained token needs repository Administration write
+permission; a classic token needs the `repo` scope for private repositories.
+Never commit it to Gallatin. After deployment, verify the services locally and
+query GitHub:
 
 ```sh
 gh api repos/OWNER/REPOSITORY/actions/runners \
