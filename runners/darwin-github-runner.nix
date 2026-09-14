@@ -10,6 +10,7 @@ with lib;
 let
   cfg = config.services.gallatin.githubActionsRunners;
   runnerPackage = pkgs.callPackage ./github-actions-runner.nix { };
+  getRegistrationToken = import ./github-registration-token.nix { inherit lib pkgs; };
   enabledRunners = filterAttrs (_: runner: runner.enable) cfg;
   runnerOptions = { name, ... }: {
     options = {
@@ -30,10 +31,14 @@ let
         default = [ ];
       };
 
-      tokenFile = mkOption {
+      accessTokenFile = mkOption {
         type = types.nullOr types.str;
         default = null;
-        description = "A root-readable short-lived registration token file.";
+        description = ''
+          A root-readable GitHub access token file used to request short-lived
+          registration tokens. Fine-grained tokens need repository Administration
+          write permission; classic tokens need the repo scope for private repositories.
+        '';
       };
 
       user = mkOption {
@@ -132,9 +137,7 @@ let
       fi
 
       if [ ! -e "$runner_dir/.runner" ]; then
-        test -r ${escapeShellArg runner.tokenFile}
-        token=$(cat ${escapeShellArg runner.tokenFile})
-        test -n "$token"
+        ${getRegistrationToken runner}
         (
           trap 'rm -f "$token_path"' EXIT
           printf '%s\n' "$token" > "$token_path"
@@ -169,8 +172,8 @@ in
 
   config = {
     assertions = mapAttrsToList (name: runner: {
-      assertion = !runner.enable || runner.tokenFile != null;
-      message = "services.gallatin.githubActionsRunners.${name}.tokenFile is required when enabled";
+      assertion = !runner.enable || runner.accessTokenFile != null;
+      message = "services.gallatin.githubActionsRunners.${name}.accessTokenFile is required when enabled";
     }) cfg;
 
     users.knownUsers = mkAfter (map (runner: runner.user) (attrValues enabledRunners));

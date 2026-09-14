@@ -39,6 +39,9 @@ stdenvNoCC.mkDerivation {
   dontUnpack = true;
   dontBuild = true;
   dontConfigure = true;
+  # System.Private.CoreLib.dll is a ready-to-run PE image. GNU strip recognizes
+  # it, but stripping it makes CoreCLR reject the image with 0x8007000B.
+  dontStrip = true;
 
   nativeBuildInputs = lib.optionals stdenv.hostPlatform.isLinux [
     autoPatchelfHook
