@@ -105,6 +105,7 @@ let
       pkgs.git
       pkgs.glibc.bin
       pkgs.gnugrep
+      pkgs.gzip
       pkgs.gnutar
     ]
     + ":/usr/bin:/bin:/usr/sbin:/sbin";
