@@ -6,7 +6,8 @@
 runner:
 
 let
-  repositoryPath = lib.removeSuffix ".git" (lib.removePrefix "https://github.com/" runner.repository);
+  repositoryUrl = lib.removeSuffix "/" runner.repository;
+  repositoryPath = lib.removeSuffix ".git" (lib.removePrefix "https://github.com/" repositoryUrl);
   registrationUrl = "https://api.github.com/repos/${repositoryPath}/actions/runners/registration-token";
 in
 ''
@@ -15,15 +16,14 @@ in
   access_token=$(cat "$access_token_file")
   test -n "$access_token"
 
-  authorization_header=$(mktemp)
-  cleanup_authorization_header() {
-    rm -f "$authorization_header"
-  }
-  trap cleanup_authorization_header EXIT
-  printf 'Authorization: Bearer %s\n' "$access_token" > "$authorization_header"
-  unset access_token
-
   token=$(
+    authorization_header=$(mktemp)
+    cleanup_authorization_header() {
+      rm -f "$authorization_header"
+    }
+    trap cleanup_authorization_header EXIT
+    printf 'Authorization: Bearer %s\n' "$access_token" > "$authorization_header"
+
     ${pkgs.curl}/bin/curl \
       --fail \
       --silent \
@@ -35,8 +35,6 @@ in
       ${lib.escapeShellArg registrationUrl} \
     | ${pkgs.jq}/bin/jq --exit-status --raw-output '.token | select(type == "string" and length > 0)'
   )
-  cleanup_authorization_header
-  authorization_header=""
-  trap - EXIT
+  unset access_token
   test -n "$token"
 ''
