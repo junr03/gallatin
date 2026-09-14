@@ -66,7 +66,16 @@ stdenvNoCC.mkDerivation {
   '';
 
   postFixup = lib.optionalString stdenv.hostPlatform.isLinux ''
-    runner_rpath='$ORIGIN:${lib.makeLibraryPath [ stdenv.cc.cc curl icu krb5 openssl zlib ]}'
+    runner_rpath='$ORIGIN:${
+      lib.makeLibraryPath [
+        stdenv.cc.cc
+        curl
+        icu
+        krb5
+        openssl
+        zlib
+      ]
+    }'
     for file in "$out"/bin/*.so "$out"/bin/Runner.Listener "$out"/bin/Runner.PluginHost "$out"/bin/Runner.Worker; do
       if [ -f "$file" ]; then
         ${patchelf}/bin/patchelf --add-rpath "$runner_rpath" "$file"
