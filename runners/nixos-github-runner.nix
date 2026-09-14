@@ -104,6 +104,8 @@ let
     ]
     + ":/usr/bin:/bin:/usr/sbin:/sbin";
 
+  runnerLibraryPath = lib.makeLibraryPath [ pkgs.icu ];
+
   bootstrapScript =
     name: runner:
     let
@@ -225,6 +227,7 @@ in
             };
             environment = {
               PATH = mkForce runnerPath;
+              LD_LIBRARY_PATH = mkForce runnerLibraryPath;
             };
             script = ''
               ${bootstrapScript name runner}
@@ -248,6 +251,7 @@ in
             environment = {
               HOME = runner.workDirectory;
               PATH = mkForce runnerPath;
+              LD_LIBRARY_PATH = runnerLibraryPath;
             };
             script = ''
               exec ./run.sh
