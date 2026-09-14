@@ -104,10 +104,6 @@ let
     ]
     + ":/usr/bin:/bin:/usr/sbin:/sbin";
 
-  runnerLibraryPath = lib.makeLibraryPath [
-    pkgs.icu
-  ];
-
   bootstrapScript =
     name: runner:
     let
@@ -119,9 +115,10 @@ let
       runner_dir=${escapeShellArg runner.workDirectory}
       version_file="$runner_dir/.gallatin-runner-version"
       token_path=${escapeShellArg tokenPath}
+      package_id=${escapeShellArg "${runner.package.version}:${runner.package}"}
       install -d -o ${escapeShellArg runner.user} -g ${escapeShellArg runner.group} -m 700 "$runner_dir"
 
-      if [ ! -e "$runner_dir/config.sh" ] || [ "$(cat "$version_file" 2>/dev/null || true)" != ${escapeShellArg runner.package.version} ]; then
+      if [ ! -e "$runner_dir/config.sh" ] || [ "$(cat "$version_file" 2>/dev/null || true)" != "$package_id" ]; then
         state_dir=$(mktemp -d)
         trap 'rm -rf "$state_dir"' EXIT
         for state in .runner .credentials .credentials_rsaparams .env .path _work; do
@@ -136,7 +133,7 @@ let
             mv "$state" "$runner_dir/"
           fi
         done
-        printf '%s\n' ${escapeShellArg runner.package.version} > "$version_file"
+        printf '%s\n' "$package_id" > "$version_file"
         chown -R ${escapeShellArg "${runner.user}:${runner.group}"} "$runner_dir"
         chmod 700 "$runner_dir"
       fi
@@ -204,7 +201,6 @@ in
               UMask = "0077";
             };
             environment = {
-              LD_LIBRARY_PATH = mkForce runnerLibraryPath;
               PATH = mkForce runnerPath;
             };
             script = ''
@@ -228,7 +224,6 @@ in
             };
             environment = {
               HOME = runner.workDirectory;
-              LD_LIBRARY_PATH = mkForce runnerLibraryPath;
               PATH = mkForce runnerPath;
             };
             script = ''
