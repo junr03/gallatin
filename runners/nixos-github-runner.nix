@@ -126,46 +126,38 @@ let
           ${pkgs.systemd}/bin/systemctl stop "$service_name"
         fi
 
-        state_dir=$(mktemp -d "${runner.workDirectory}.refresh.XXXXXX")
-        old_dir=$(mktemp -d "${runner.workDirectory}.old.XXXXXX")
-        rmdir "$old_dir"
-        moved_states=""
+        state_dir=$(mktemp -d "$runner_dir/.gallatin-state.XXXXXX")
+        stage_dir=$(mktemp -d "$runner_dir/.gallatin-stage.XXXXXX")
         cleanup_refresh() {
           status=$?
           trap - EXIT
           if [ "$status" -ne 0 ]; then
-            for state in $moved_states; do
-              if [ -e "$state_dir/$state" ]; then
-                mv "$state_dir/$state" "$old_dir/$state"
-              fi
-            done
-            if [ ! -e "$runner_dir" ] && [ -e "$old_dir" ]; then
-              mv "$old_dir" "$runner_dir"
-            fi
+            find "$runner_dir" -mindepth 1 -maxdepth 1 -not -path "$state_dir" -not -path "$stage_dir" -exec rm -rf {} \;
+            find "$state_dir" -mindepth 1 -maxdepth 1 -exec mv {} "$runner_dir/" \;
             if [ "$was_active" = true ]; then
               ${pkgs.systemd}/bin/systemctl start "$service_name" || true
             fi
           fi
           if [ -n "$state_dir" ]; then rm -rf "$state_dir"; fi
-          if [ -n "$old_dir" ] && [ -e "$old_dir" ]; then rm -rf "$old_dir"; fi
+          if [ -n "$stage_dir" ]; then rm -rf "$stage_dir"; fi
           exit "$status"
         }
         trap cleanup_refresh EXIT
-        mv "$runner_dir" "$old_dir"
-        cp -R ${escapeShellArg "${runner.package}/."} "$state_dir/"
+        find "$runner_dir" -mindepth 1 -maxdepth 1 -not -path "$state_dir" -not -path "$stage_dir" -exec mv {} "$state_dir/" \;
+        cp -R ${escapeShellArg "${runner.package}/."} "$stage_dir/"
         for state in .runner .credentials .credentials_rsaparams .env .path _work; do
-          if [ -e "$old_dir/$state" ]; then
-            mv "$old_dir/$state" "$state_dir/$state"
-            moved_states="$moved_states $state"
+          if [ -e "$state_dir/$state" ]; then
+            mv "$state_dir/$state" "$stage_dir/$state"
           fi
         done
-        printf '%s\n' "$package_id" > "$state_dir/.gallatin-runner-version"
-        chown -R ${escapeShellArg "${runner.user}:${runner.group}"} "$state_dir"
-        chmod 700 "$state_dir"
-        mv "$state_dir" "$runner_dir"
+        printf '%s\n' "$package_id" > "$stage_dir/.gallatin-runner-version"
+        chown -R ${escapeShellArg "${runner.user}:${runner.group}"} "$stage_dir"
+        chmod 700 "$stage_dir"
+        find "$stage_dir" -mindepth 1 -maxdepth 1 -exec mv {} "$runner_dir/" \;
+        rm -rf "$state_dir"
+        rm -rf "$stage_dir"
         state_dir=""
-        rm -rf "$old_dir"
-        old_dir=""
+        stage_dir=""
         trap - EXIT
       fi
 
