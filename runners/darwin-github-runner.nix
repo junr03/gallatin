@@ -108,9 +108,10 @@ let
       runner_dir=${escapeShellArg runner.workDirectory}
       version_file="$runner_dir/.gallatin-runner-version"
       token_path=${escapeShellArg (tokenPath runner)}
+      package_id=${escapeShellArg "${runner.package.version}:${runner.package}"}
       install -d -o ${escapeShellArg runner.user} -m 700 "$runner_dir"
 
-      if [ ! -e "$runner_dir/config.sh" ] || [ "$(cat "$version_file" 2>/dev/null || true)" != ${escapeShellArg runner.package.version} ]; then
+      if [ ! -e "$runner_dir/config.sh" ] || [ "$(cat "$version_file" 2>/dev/null || true)" != "$package_id" ]; then
         state_dir=$(mktemp -d)
         trap 'rm -rf "$state_dir"' EXIT
         for state in .runner .credentials .credentials_rsaparams .env .path _work; do
@@ -120,12 +121,12 @@ let
         done
         find "$runner_dir" -mindepth 1 -maxdepth 1 -exec rm -rf {} +
         cp -R ${escapeShellArg "${runner.package}/."} "$runner_dir/"
-        for state in "$state_dir"/*; do
-          if [ -e "$state" ]; then
-            mv "$state" "$runner_dir/"
+        for state in .runner .credentials .credentials_rsaparams .env .path _work; do
+          if [ -e "$state_dir/$state" ]; then
+            mv "$state_dir/$state" "$runner_dir/$state"
           fi
         done
-        printf '%s\n' ${escapeShellArg runner.package.version} > "$version_file"
+        printf '%s\n' "$package_id" > "$version_file"
         chown -R ${escapeShellArg runner.user} "$runner_dir"
         chmod 700 "$runner_dir"
       fi
