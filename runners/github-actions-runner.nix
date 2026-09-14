@@ -6,6 +6,7 @@
   krb5,
   lib,
   openssl,
+  patchelf,
   stdenv,
   stdenvNoCC,
   zlib,
@@ -39,7 +40,10 @@ stdenvNoCC.mkDerivation {
   dontBuild = true;
   dontConfigure = true;
 
-  nativeBuildInputs = lib.optional stdenv.hostPlatform.isLinux autoPatchelfHook;
+  nativeBuildInputs = lib.optionals stdenv.hostPlatform.isLinux [
+    autoPatchelfHook
+    patchelf
+  ];
   buildInputs = lib.optionals stdenv.hostPlatform.isLinux [
     stdenv.cc.cc
     curl
@@ -59,6 +63,10 @@ stdenvNoCC.mkDerivation {
     install -d "$out"
     tar -xzf "$src" -C "$out"
     runHook postInstall
+  '';
+
+  postFixup = lib.optionalString stdenv.hostPlatform.isLinux ''
+    ${patchelf}/bin/patchelf --add-rpath ${icu}/lib "$out/bin/libSystem.Globalization.Native.so"
   '';
 
   meta = {

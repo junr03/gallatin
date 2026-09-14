@@ -104,10 +104,6 @@ let
     ]
     + ":/usr/bin:/bin:/usr/sbin:/sbin";
 
-  runnerLibraryPath = lib.makeLibraryPath [
-    pkgs.icu
-  ];
-
   bootstrapScript =
     name: runner:
     let
@@ -119,26 +115,58 @@ let
       runner_dir=${escapeShellArg runner.workDirectory}
       version_file="$runner_dir/.gallatin-runner-version"
       token_path=${escapeShellArg tokenPath}
+      package_id=${escapeShellArg "${runner.package.version}:${runner.package}"}
       install -d -o ${escapeShellArg runner.user} -g ${escapeShellArg runner.group} -m 700 "$runner_dir"
 
-      if [ ! -e "$runner_dir/config.sh" ] || [ "$(cat "$version_file" 2>/dev/null || true)" != ${escapeShellArg runner.package.version} ]; then
-        state_dir=$(mktemp -d)
-        trap 'rm -rf "$state_dir"' EXIT
+      if [ ! -e "$runner_dir/config.sh" ] || [ "$(cat "$version_file" 2>/dev/null || true)" != "$package_id" ]; then
+        service_name=${escapeShellArg (serviceName name)}
+        was_active=false
+        if ${pkgs.systemd}/bin/systemctl is-active --quiet "$service_name"; then
+          was_active=true
+          ${pkgs.systemd}/bin/systemctl stop "$service_name"
+        fi
+
+        state_dir=$(mktemp -d "${runner.workDirectory}.refresh.XXXXXX")
+        old_dir=$(mktemp -d "${runner.workDirectory}.old.XXXXXX")
+        rmdir "$old_dir"
+        moved_states=""
+        cleanup_refresh() {
+          status=$?
+          trap - EXIT
+          if [ "$status" -ne 0 ]; then
+            for state in $moved_states; do
+              if [ -e "$state_dir/$state" ]; then
+                mv "$state_dir/$state" "$old_dir/$state"
+              fi
+            done
+            if [ ! -e "$runner_dir" ] && [ -e "$old_dir" ]; then
+              mv "$old_dir" "$runner_dir"
+            fi
+            if [ "$was_active" = true ]; then
+              ${pkgs.systemd}/bin/systemctl start "$service_name" || true
+            fi
+          fi
+          if [ -n "$state_dir" ]; then rm -rf "$state_dir"; fi
+          if [ -n "$old_dir" ] && [ -e "$old_dir" ]; then rm -rf "$old_dir"; fi
+          exit "$status"
+        }
+        trap cleanup_refresh EXIT
+        mv "$runner_dir" "$old_dir"
+        cp -R ${escapeShellArg "${runner.package}/."} "$state_dir/"
         for state in .runner .credentials .credentials_rsaparams .env .path _work; do
-          if [ -e "$runner_dir/$state" ]; then
-            mv "$runner_dir/$state" "$state_dir/$state"
+          if [ -e "$old_dir/$state" ]; then
+            mv "$old_dir/$state" "$state_dir/$state"
+            moved_states="$moved_states $state"
           fi
         done
-        find "$runner_dir" -mindepth 1 -maxdepth 1 -exec rm -rf {} +
-        cp -R ${escapeShellArg "${runner.package}/."} "$runner_dir/"
-        for state in "$state_dir"/*; do
-          if [ -e "$state" ]; then
-            mv "$state" "$runner_dir/"
-          fi
-        done
-        printf '%s\n' ${escapeShellArg runner.package.version} > "$version_file"
-        chown -R ${escapeShellArg "${runner.user}:${runner.group}"} "$runner_dir"
-        chmod 700 "$runner_dir"
+        printf '%s\n' "$package_id" > "$state_dir/.gallatin-runner-version"
+        chown -R ${escapeShellArg "${runner.user}:${runner.group}"} "$state_dir"
+        chmod 700 "$state_dir"
+        mv "$state_dir" "$runner_dir"
+        state_dir=""
+        rm -rf "$old_dir"
+        old_dir=""
+        trap - EXIT
       fi
 
       if [ ! -e "$runner_dir/.runner" ]; then
@@ -204,7 +232,6 @@ in
               UMask = "0077";
             };
             environment = {
-              LD_LIBRARY_PATH = mkForce runnerLibraryPath;
               PATH = mkForce runnerPath;
             };
             script = ''
@@ -228,7 +255,6 @@ in
             };
             environment = {
               HOME = runner.workDirectory;
-              LD_LIBRARY_PATH = mkForce runnerLibraryPath;
               PATH = mkForce runnerPath;
             };
             script = ''
