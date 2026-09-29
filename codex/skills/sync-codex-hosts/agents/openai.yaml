@@ -1,0 +1,4 @@
+interface:
+  display_name: "Sync Codex Hosts"
+  short_description: "Update SSH hosts and verify Codex model parity"
+  default_prompt: "Use $sync-codex-hosts to synchronize my Mac, devbox, and electricpeak Codex models."
