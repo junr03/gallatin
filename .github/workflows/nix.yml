@@ -52,3 +52,6 @@ jobs:
           for file in codex.nix rename-picture.nix runners/github-actions-runner.nix; do
             nix-build --no-out-link -E "with import <nixpkgs> {}; callPackage ./$file {}"
           done
+
+      - name: Check shared agent skills
+        run: nix-build --no-out-link -E 'with import <nixpkgs> {}; callPackage ./skills/tests {}'
