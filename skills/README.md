@@ -2,7 +2,7 @@
 
 Import this Home Manager module on macOS or Linux to install the shared skill
 list under `~/.agents/skills`. The list currently contains only the pinned Matt
-Pocock skills. Gallatin's Codex configuration package does not bundle skills:
+Pocock skills from [junr03/skills](https://github.com/junr03/skills). Gallatin's Codex configuration package does not bundle skills:
 
 ```nix
 {

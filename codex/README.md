@@ -19,7 +19,8 @@ settings, local executable paths, or OAuth state.
 
 Use the package from either host configuration and keep the existing Codex
 runtime directory in place. Import Gallatin's separate Home Manager skill module
-to install the pinned Matt Pocock skills under `~/.agents/skills`:
+to install the pinned Matt Pocock skills from
+[junr03/skills](https://github.com/junr03/skills) under `~/.agents/skills`:
 
 ```nix
 let
