@@ -7,7 +7,7 @@ The output contains:
 
 - `AGENTS.md`
 - `agents/`
-- `skills/`, a compatibility link to the shared agent skill package
+- `skills/` (custom skills only; Codex's `.system` skills are not copied)
 - `rules/`
 - `keybindings.json`
 - `config.shared.toml`, a portable fragment for the host's `config.toml`
@@ -18,18 +18,14 @@ settings, local executable paths, or OAuth state.
 
 ## Home Manager
 
-Use the package from either host configuration and import Gallatin's shared
-skill installer. The installer places custom and external skills in
-`~/.agents/skills`. The Codex package keeps agents, rules, instructions, and
-settings separate from the runtime directory:
+Use the package from either host configuration and keep the existing Codex
+runtime directory in place:
 
 ```nix
 let
   codexConfig = pkgs.callPackage "${gallatin}/codex.nix" { };
 in
 {
-  imports = [ "${gallatin}/skills" ];
-
   home.file = {
     ".codex/AGENTS.md" = {
       source = "${codexConfig}/AGENTS.md";
@@ -47,19 +43,19 @@ in
       source = "${codexConfig}/rules";
       force = true;
     };
-  };
+  } // lib.mapAttrs' (
+    name: _:
+    lib.nameValuePair ".codex/skills/${name}" {
+      source = "${codexConfig}/skills/${name}";
+      recursive = true;
+      force = true;
+    }
+  ) (builtins.readDir "${codexConfig}/skills");
 }
 ```
 
-The `force` settings apply to the listed Codex configuration paths. The shared
-skill installer uses normal Home Manager collision checks. Neither replaces the
-whole `~/.codex` directory or its runtime state.
-
-Remove the `.codex/skills/<name>` declarations from the previous example when
-adopting this module. Home Manager retires previously managed links on
-activation. The package's `$out/skills` link and the generated agents' absolute
-skill references remain valid. See [the shared skill module](../skills/README.md)
-for source pins, duplicate-name checks, and migration details.
+The `force` settings replace existing managed files and directories. They do
+not replace unrelated files under `~/.codex`, including runtime state.
 
 Merge `config.shared.toml` into each host's `~/.codex/config.toml`. Keep
 project-specific trust, notification, plugin, and local tool settings in the

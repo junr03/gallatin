@@ -1,7 +1,4 @@
-{
-  lib,
-  repositories ? import ./repositories.nix,
-}:
+{ lib, repositories }:
 let
   findSkills =
     repositoryName: relativePath: directory:
@@ -56,7 +53,9 @@ if duplicates != [ ] then
 else
   builtins.listToAttrs (
     map (skill: {
-      name = skill.name;
-      value = skill.source;
+      name = ".agents/skills/${skill.name}";
+      value = {
+        source = skill.source;
+      };
     }) skills
   )
