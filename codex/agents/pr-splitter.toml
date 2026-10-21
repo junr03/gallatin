@@ -10,7 +10,3 @@ order, file boundaries, validation boundaries, risks, and the recommended merge
 sequence. Do not edit files, create branches, generate implementation code,
 commit, or push.
 """
-
-[[skills.config]]
-path = "@CODEX_SKILLS_DIR@/break-into-small-prs/SKILL.md"
-enabled = true

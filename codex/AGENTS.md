@@ -54,12 +54,12 @@ and supporting scripts.
 
 ## Writing style
 
-For prose artifacts, invoke `$write-like-a-human` before drafting or revising:
+Use direct, natural, concise language when drafting or revising prose:
 
 - PR descriptions
 - RFCs and PRDs
 - Documentation and docstrings
 - Emails and chat messages
 
-Do not apply it to source code, commands, structured data, quoted text, or
-content the user explicitly asks to preserve.
+Apply prose-style edits only to prose. Preserve source code, commands,
+structured data, quoted text, and content the user asks to keep unchanged.

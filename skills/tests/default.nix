@@ -28,6 +28,7 @@ let
     };
   });
   sharedFiles = (import ../default.nix { inherit lib; }).home.file;
+  codexConfig = pkgs.callPackage ../../codex.nix { };
 in
 assert
   builtins.attrNames defaultFiles == [
@@ -43,4 +44,26 @@ assert sharedFiles != { };
 assert lib.all (file: builtins.pathExists (file.source + "/SKILL.md")) (
   builtins.attrValues sharedFiles
 );
-pkgs.runCommand "shared-agent-skills-check" { } "mkdir -p $out"
+pkgs.runCommand "shared-agent-skills-check"
+  {
+    nativeBuildInputs = [ pkgs.python3 ];
+    inherit codexConfig;
+  }
+  ''
+    python3 - <<'PYTEST'
+    import os
+    from pathlib import Path
+    import tomllib
+
+    codex = Path(os.environ["codexConfig"])
+    assert "skills" not in {path.name for path in codex.iterdir()}
+    for agent in (codex / "agents").glob("*.toml"):
+        text = agent.read_text()
+        assert "@CODEX_SKILLS_DIR@" not in text, agent
+        config = tomllib.loads(text)
+        for skill in config.get("skills", {}).get("config", []):
+            assert Path(skill["path"]).is_file(), skill
+    tomllib.loads((codex / "config.shared.toml").read_text())
+    PYTEST
+    mkdir -p "$out"
+  ''

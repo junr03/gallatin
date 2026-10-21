@@ -10,7 +10,3 @@ tradeoffs, compatibility concerns, failure modes, migration needs, observability
 security implications, and test strategy. Return a concise decision record with
 file and symbol references. Do not edit files or perform Git operations.
 """
-
-[[skills.config]]
-path = "@CODEX_SKILLS_DIR@/break-into-small-prs/SKILL.md"
-enabled = true
