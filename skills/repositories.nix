@@ -2,7 +2,7 @@
   mattpocock = {
     source = builtins.fetchGit {
       url = "https://github.com/junr03/skills.git";
-      rev = "49dd158d1076134a641b33efb035946536778336";
+      rev = "08a794c2ebbb91a544c47b026178c509e004880f";
     };
     directories = [ "skills" ];
   };
