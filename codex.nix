@@ -1,8 +1,11 @@
 {
   lib,
+  linkFarm,
   stdenvNoCC,
 }:
-
+let
+  skills = import ./skills/package.nix { inherit lib linkFarm; };
+in
 stdenvNoCC.mkDerivation {
   pname = "codex-shared-config";
   version = "0.1.0";
@@ -17,7 +20,7 @@ stdenvNoCC.mkDerivation {
     install -d "$out"
     cp -R codex/agents "$out/agents"
     cp -R codex/rules "$out/rules"
-    cp -R codex/skills "$out/skills"
+    ln -s ${skills} "$out/skills"
     install -m 0644 codex/AGENTS.md "$out/AGENTS.md"
     install -m 0644 codex/config.shared.toml "$out/config.shared.toml"
     install -m 0644 codex/keybindings.json "$out/keybindings.json"

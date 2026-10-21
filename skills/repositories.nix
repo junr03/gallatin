@@ -1,4 +1,8 @@
 {
+  gallatin = {
+    source = ../.;
+    directories = [ "codex/skills" ];
+  };
   mattpocock = {
     source = builtins.fetchGit {
       url = "https://github.com/mattpocock/skills.git";
