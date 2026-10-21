@@ -2,6 +2,16 @@
 let
   discover = repositories: import ../skill-files.nix { inherit lib repositories; };
   defaultFiles = discover { fixture.source = ./fixtures; };
+  multipleFiles = discover {
+    first = {
+      source = ./fixtures;
+      directories = [ "skills" ];
+    };
+    second = {
+      source = ./fixtures;
+      directories = [ ".agents/skills" ];
+    };
+  };
   customFiles = discover {
     fixture = {
       source = ./fixtures;
@@ -36,6 +46,11 @@ assert
     ".agents/skills/example"
   ];
 assert defaultFiles.".agents/skills/example".source == ./fixtures/skills/nested/example;
+assert
+  builtins.attrNames multipleFiles == [
+    ".agents/skills/agent"
+    ".agents/skills/example"
+  ];
 assert builtins.attrNames customFiles == [ ".agents/skills/fixture" ];
 assert missingFiles == { };
 assert !duplicateFiles.success;

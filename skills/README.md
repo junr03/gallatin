@@ -13,7 +13,9 @@ Pocock skills. Gallatin's Codex configuration package does not bundle skills:
 The enclosing NixOS or nix-darwin module needs `gallatin` as an argument. Pin its
 source revision in your flake input and regenerate the lock file when updating it.
 
-Add skill repositories to `repositories.nix`. Pin each source to a Git revision.
+List any number of named skill repositories in `repositories.nix`. Each entry
+has its own pinned `source` and optional `directories`. The installer combines
+skills from all entries. Pin each external source to a Git revision.
 The installer searches `.agents/skills/` and `skills/` by default. Set
 `directories` on a repository to choose other roots.
 
