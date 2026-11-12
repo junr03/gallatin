@@ -49,7 +49,7 @@ jobs:
 
       - name: Build Nix files
         run: |
-          for file in codex.nix rename-picture.nix runners/github-actions-runner.nix; do
+          for file in codex.nix herdr.nix rename-picture.nix runners/github-actions-runner.nix; do
             nix-build --no-out-link -E "with import <nixpkgs> {}; callPackage ./$file {}"
           done
 

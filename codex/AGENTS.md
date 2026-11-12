@@ -38,6 +38,19 @@ and supporting scripts.
 - If a pull request cannot be opened, leave the work ready to publish when
   possible and report the exact blocker.
 
+## Herdr configuration
+
+- Treat Gallatin's `herdr/config/` as the durable source for shared Herdr
+  settings, keybindings, layouts, and custom mods.
+- You can experiment with Herdr changes locally. Afterward, persist every
+  accepted change in `herdr/config/`, validate it, and submit a pull request
+  to Gallatin so Blacktail and Electricpeak can install the same revision.
+- Do not leave the final Herdr changes only under `~/.config/herdr-app`.
+- Herdr regenerates `~/.config/herdr-app/AGENTS.md` at startup. Keep durable
+  guidance here instead of relying on edits to that generated file.
+- Keep Herdr's generated files and runtime state out of the package, including
+  window and project state, mod data, caches, and downloaded update metadata.
+
 ## Validation
 
 - Validate configuration syntax and relevant generated files after changes.
