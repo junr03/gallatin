@@ -7,7 +7,7 @@
 import { View, div, image, svg } from "gpui-kit";
 import { v_flex, h_flex, InputState, Input } from "gpui-base";
 import { agents, terminals, spaces, machines, knownAgents, pickFolder, run, theme, shared, setShared, openOverlay, closeOverlay, props, notify } from "herdr";
-import { STATUSES, RANK, BY_ID, FROM_AGENT, KEYS, slugify, clean, baseName, machineOfAddr, setName, setFlag, foldersOf, setFolders, createThread } from "./lib.js";
+import { STATUSES, RANK, BY_ID, FROM_AGENT, KEYS, NO_PROJECT, slugify, clean, baseName, machineOfAddr, setName, setFlag, foldersOf, setFolders, createThread } from "./lib.js";
 
 const stop = (_e, cx) => cx.stop_propagation();
 
@@ -55,7 +55,7 @@ function collect() {
       spaceId: a.space,
       status: statusOf(a, labels, overrides),
       title: threadNames[a.address] ?? (clean(a.tab_name) || a.program?.name || a.address),
-      fallbackName: space?.name ?? key,
+      fallbackName: key === NO_PROJECT ? "No project" : space?.name ?? key,
       archived: Boolean(archivedThreads[a.address]),
     };
   });
@@ -70,9 +70,10 @@ function collect() {
   for (const g of groups.values()) {
     g.list.sort((x, y) => RANK[y.status.id] - RANK[x.status.id] || y.a.seq - x.a.seq);
     g.archived = Boolean(archivedProjects[g.key]);
-    g.urgency = Math.max(0, ...g.list.filter((th) => !th.archived).map((th) => RANK[th.status.id]));
   }
-  const ordered = [...groups.values()].sort((x, y) => y.urgency - x.urgency || x.name.localeCompare(y.name));
+  // Projects keep a fixed order (by name, "No project" last) so they never jump as statuses change.
+  const ordered = [...groups.values()].sort((x, y) =>
+    (x.key === NO_PROJECT) - (y.key === NO_PROJECT) || x.name.localeCompare(y.name) || x.key.localeCompare(y.key));
   return { threads, groups: ordered, count: threads.length };
 }
 
@@ -172,7 +173,7 @@ export default class Projects extends View {
       return this.close();
     }
     if (f.kind === "new-thread") {
-      if (!this.projectKey) return this.fail("Pick a project.", cx);
+      if (!this.projectKey) return this.fail("Pick a project, or No project.", cx);
       if (!this.agent) return this.fail("Pick an agent (installed on that machine).", cx);
       const data = collect();
       const group = data.groups.find((g) => g.key === this.projectKey);
@@ -183,7 +184,7 @@ export default class Projects extends View {
         try {
           await createThread({
             project: this.projectKey,
-            projectName: group?.name ?? this.projectKey,
+            projectName: this.projectKey === NO_PROJECT ? "No project" : group?.name ?? this.projectKey,
             machine: this.machine,
             spaceId: sameMachine?.spaceId ?? null,
             agent: this.agent,
@@ -253,13 +254,20 @@ export default class Projects extends View {
       .child(h_flex().items_center().child(div().flex_1().text_size(15).font_semibold().child(titles[f.kind] ?? "")).child(div().text_size(11).text_color(t.dim).child("Esc")))
       .when(f.kind === "new-thread", (el) => el
         .child(label("Project"))
-        .child(h_flex().gap(6).flex_wrap().children(data.groups.filter((g) => !g.archived).map((g) =>
-          this.chip(t, `pj-${g.key}`, g.name, this.projectKey === g.key, (_e, cx) => {
-            this.projectKey = g.key;
-            this.folders = [...foldersOf(g.key)];
+        .child(h_flex().gap(6).flex_wrap()
+          .child(this.chip(t, "pj-none", "No project", this.projectKey === NO_PROJECT, (_e, cx) => {
+            this.projectKey = NO_PROJECT;
+            this.folders = [];
             this.error = null;
             cx.notify();
-          })))))
+          }))
+          .children(data.groups.filter((g) => !g.archived && g.key !== NO_PROJECT).map((g) =>
+            this.chip(t, `pj-${g.key}`, g.name, this.projectKey === g.key, (_e, cx) => {
+              this.projectKey = g.key;
+              this.folders = [...foldersOf(g.key)];
+              this.error = null;
+              cx.notify();
+            })))))
       .when(f.kind === "new-thread", (el) => el
         .child(label("Machine"))
         .child(h_flex().gap(6).flex_wrap().children(machineNames.map((m) => this.chip(t, `mc-${m ?? "local"}`, machineLabel(m), (this.machine ?? null) === m, (_e, cx) => {
@@ -365,10 +373,12 @@ export default class Projects extends View {
               .child(div().text_size(13).font_semibold().truncate().child(g.name))
               .child(div().text_size(11).text_color(t.dim).child(`${visible(g).length}`))
               .child(div().flex_1())
-              .child(div().id(`pr-${g.key}`).px(4).text_color(t.dim).cursor_pointer().hover((s) => s.text_color(t.foreground))
-                .on_mouse_down("left", stop).on_click(() => this.dialog("rename-project", { key: g.key, name: g.name }, 380, 300)).child("✎"))
+              .when(g.key !== NO_PROJECT, (el) => el
+                .child(div().id(`pr-${g.key}`).px(4).text_color(t.dim).cursor_pointer().hover((s) => s.text_color(t.foreground))
+                  .on_mouse_down("left", stop).on_click(() => this.dialog("rename-project", { key: g.key, name: g.name }, 380, 300)).child("✎")))
               .child(headerBtn(`pt-${g.key}`, "+", () => this.dialog("new-thread", { key: g.key }, 440, 560)))
-              .child(iconBtn(`pa-${g.key}`, "archive", () => setFlag(KEYS.archivedProjects, g.key, true))))
+              .when(g.key !== NO_PROJECT, (el) => el
+                .child(iconBtn(`pa-${g.key}`, "archive", () => setFlag(KEYS.archivedProjects, g.key, true)))))
             .children(visible(g).map(threadRow)))
           : [div().px(4).text_size(12).text_color(t.dim).child(data.groups.length ? "All projects are archived." : "No projects yet. Use + Project.")]))
       .when(archivedCount > 0, (el) => el.child(this.archivedBox(t, data, active, archivedCount)));

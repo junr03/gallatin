@@ -16,6 +16,10 @@ export const BY_ID = Object.fromEntries(STATUSES.map((s) => [s.id, s]));
 // What an agent's live state means when no label or override says otherwise.
 export const FROM_AGENT = { blocked: "waiting", done: "under_review", working: "running", idle: "idle" };
 
+// Project key for threads with no project. slugify never yields an underscore, so no real
+// project can take it.
+export const NO_PROJECT = "_none";
+
 export const KEYS = {
   status: "projects.status", // address -> status word (manual override)
   names: "projects.names", // project key -> display name
