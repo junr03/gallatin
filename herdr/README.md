@@ -20,8 +20,9 @@ agent instructions for this configuration live in Gallatin's shared
 The `usage` mod shows Claude Code and Codex plan limits as progress bars. Its
 lookup uses the existing local Claude and Codex login credentials to make
 HTTPS requests to Anthropic and ChatGPT usage endpoints. The package contains
-no credentials. Claude's Keychain lookup is macOS-specific; the local login must exist on
-each machine for its limits to appear.
+no credentials. Each service is asked at most every five minutes, and failures back off
+up to an hour, so the usage endpoints do not rate-limit the app. Claude's Keychain lookup
+is macOS-specific; the local login must exist on each machine for its limits to appear.
 
 ## Home Manager
 

@@ -2,13 +2,30 @@
 // Each figure is what Claude Code and Codex show for their plan windows, read with the
 // login each one already keeps on this Mac (Claude: the Keychain item
 // "Claude Code-credentials"; Codex: ~/.codex/auth.json). Tokens stay in this mod's memory.
-// Refreshes every minute.
+// Each service is asked at most every five minutes. After a failure the wait doubles, up to an
+// hour, and a Retry-After header from the server is honored. Every view shares one cache, so
+// several panes do not multiply the requests.
 
 import { View, div } from "gpui-kit";
 import { v_flex, h_flex } from "gpui-base";
 import { exec, home, readTextFile, theme } from "herdr";
 
-const REFRESH_MS = 60_000;
+const TICK_MS = 60_000; // how often the view checks whether a service is due
+const REFRESH_MS = 5 * 60_000; // normal wait between requests to one service
+const MAX_BACKOFF_MS = 60 * 60_000; // ceiling for the wait after repeated failures
+
+// Module-level so every Usage view reads the same results and joins the same request.
+const shared = {
+  claude: { live: null, nextAt: 0, failures: 0 },
+  codex: { live: null, nextAt: 0, failures: 0 },
+  inFlight: null,
+};
+
+// Seconds from a Retry-After header, or null.
+function retryAfterMs(r) {
+  const s = Number(r.headers.get("retry-after"));
+  return Number.isFinite(s) && s > 0 ? s * 1000 : null;
+}
 
 // "resets in 2h 10m" from an ISO time or a unix time in seconds.
 function resetsIn(when) {
@@ -42,7 +59,15 @@ async function claudeLive() {
   const r = await fetch("https://api.anthropic.com/api/oauth/usage", {
     headers: { Authorization: `Bearer ${token}`, "anthropic-beta": "oauth-2025-04-20" },
   });
-  if (!r.ok) return { error: r.status === 401 ? "Claude Code login expired: open Claude Code once" : `Claude usage HTTP ${r.status}` };
+  if (!r.ok) {
+    return {
+      error: r.status === 401 ? "Claude Code login expired: open Claude Code once"
+        : r.status === 429 ? "Claude usage rate limited; retrying later"
+        : `Claude usage HTTP ${r.status}`,
+      rateLimited: r.status === 429,
+      retryAfterMs: retryAfterMs(r),
+    };
+  }
   const d = await r.json();
   const windows = [
     { label: "5-hour", pct: d.five_hour?.utilization, resetsAt: d.five_hour?.resets_at },
@@ -65,7 +90,15 @@ async function codexLive() {
   const r = await fetch("https://chatgpt.com/backend-api/wham/usage", {
     headers: { Authorization: `Bearer ${tokens.access_token}`, "ChatGPT-Account-Id": tokens.account_id ?? "" },
   });
-  if (!r.ok) return { error: r.status === 401 ? "Codex login expired: open Codex once" : `Codex usage HTTP ${r.status}` };
+  if (!r.ok) {
+    return {
+      error: r.status === 401 ? "Codex login expired: open Codex once"
+        : r.status === 429 ? "Codex usage rate limited; retrying later"
+        : `Codex usage HTTP ${r.status}`,
+      rateLimited: r.status === 429,
+      retryAfterMs: retryAfterMs(r),
+    };
+  }
   const d = await r.json();
   const rl = d.rate_limit ?? {};
   const windows = [
@@ -81,20 +114,45 @@ async function codexLive() {
   return { windows, error: null };
 }
 
+// Asks one service for usage if its wait has passed, then stores the result.
+async function poll(state, fetchLive) {
+  if (Date.now() < state.nextAt) return;
+  let r;
+  try {
+    r = await fetchLive();
+  } catch (e) {
+    r = { error: String(e.message ?? e) };
+  }
+  const ok = !r.error;
+  state.failures = ok ? 0 : state.failures + 1;
+  const backoff = ok ? REFRESH_MS : Math.min(REFRESH_MS * 2 ** state.failures, MAX_BACKOFF_MS);
+  state.nextAt = Date.now() + Math.max(backoff, r.retryAfterMs ?? 0);
+  // A rate-limited reply keeps the last windows instead of replacing them with an error.
+  if (r.rateLimited && state.live?.windows?.length) return;
+  state.live = r;
+}
+
+// Runs at most one poll pass at a time; concurrent callers wait on the same pass.
+function pollDue() {
+  shared.inFlight ??= Promise.all([
+    poll(shared.claude, claudeLive),
+    poll(shared.codex, codexLive),
+  ]).finally(() => {
+    shared.inFlight = null;
+  });
+  return shared.inFlight;
+}
+
 export default class Usage extends View {
   init(_props, cx) {
-    this.live = { claude: null, codex: null };
     this.refresh(cx);
-    cx.timer.every(REFRESH_MS, (cx) => this.refresh(cx));
+    cx.timer.every(TICK_MS, (cx) => this.refresh(cx));
   }
 
+  // Every tick re-renders this view from the shared cache, so panes stay in step.
   refresh(cx) {
     cx.spawn(async (cx) => {
-      const [claude, codex] = await Promise.all([
-        claudeLive().catch((e) => ({ error: String(e.message ?? e) })),
-        codexLive().catch((e) => ({ error: String(e.message ?? e) })),
-      ]);
-      this.live = { claude, codex };
+      await pollDue();
       cx.notify();
     });
   }
@@ -124,8 +182,8 @@ export default class Usage extends View {
     const t = theme();
     return v_flex().size_full().p(10).gap(10).text_color(t.foreground).overflow_y_scrollbar()
       .child(div().px(4).text_size(12).font_semibold().text_color(t.muted).child("USAGE"))
-      .child(this.section(t, "usage-claude", "Claude Code", this.live.claude))
+      .child(this.section(t, "usage-claude", "Claude Code", shared.claude.live))
       .child(div().h(1).bg(t.border))
-      .child(this.section(t, "usage-codex", "Codex", this.live.codex));
+      .child(this.section(t, "usage-codex", "Codex", shared.codex.live));
   }
 }
