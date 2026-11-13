@@ -17,12 +17,11 @@ outside the package. Herdr rewrites its `AGENTS.md` at startup, so the durable
 agent instructions for this configuration live in Gallatin's shared
 `codex/AGENTS.md` instead.
 
-The `usage` mod reads local Claude and Codex transcript files. Its live-limit
+The `usage` mod shows Claude Code and Codex plan limits as progress bars. Its
 lookup uses the existing local Claude and Codex login credentials to make
 HTTPS requests to Anthropic and ChatGPT usage endpoints. The package contains
-no credentials. Claude's Keychain lookup is macOS-specific; the local token
-and transcript files must exist on each machine for the corresponding data to
-appear.
+no credentials. Claude's Keychain lookup is macOS-specific; the local login must exist on
+each machine for its limits to appear.
 
 ## Home Manager
 
@@ -37,8 +36,7 @@ home-manager.users.junr03.imports = [
 ];
 ```
 
-The overlay manages only paths present in the package. It uses
-`force = true`, so a Home Manager activation restores those paths from the
-selected Gallatin revision. Keep local experiments until they are ready, then
-port the final changes into `herdr/config` and open a pull request to Gallatin
+The activation copies only paths present in the package into
+`~/.config/herdr-app`, replacing them with the selected Gallatin revision. Keep local experiments
+until they are ready, then port the final changes into `herdr/config` and open a pull request to Gallatin
 before activating a revision that replaces them.
