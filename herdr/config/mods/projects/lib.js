@@ -21,12 +21,23 @@ export const KEYS = {
   names: "projects.names", // project key -> display name
   created: "projects.created", // project keys made in the UI, even with no threads yet
   threads: "threads.names", // address -> display name
+  folders: "projects.folders", // project key -> folders new threads start with (local only)
 };
 
 export const slugify = (s) => (s ?? "").toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
 export const clean = (s) => (s ?? "").replace(/^[^\p{L}\p{N}]+/u, "").trim();
 export const machineOfAddr = (addr) => (addr.includes("/") ? addr.split("/")[0] : null);
 export const bareAddr = (addr) => (addr.includes("/") ? addr.split("/").slice(1).join("/") : addr);
+export const baseName = (p) => p.replace(/\/+$/, "").split("/").pop() || p;
+
+// Folders a project's new threads inherit. Threads copy them and may change their own list.
+export const foldersOf = (key) => (shared(KEYS.folders) ?? {})[key] ?? [];
+export function setFolders(key, list) {
+  const next = { ...(shared(KEYS.folders) ?? {}) };
+  if (list.length) next[key] = list;
+  else delete next[key];
+  setShared(KEYS.folders, next);
+}
 
 // A rename or new name is saved as a map entry; an empty name removes the entry.
 export function setName(key, map, name) {
@@ -50,11 +61,16 @@ async function doCommand(name, args) {
 // Starts an agent in a new thread of a project on `machine` (null: this computer).
 // `spaceId` is a space of that project on that machine, when there is one: the thread
 // becomes a tab there. Otherwise a new space is made for the project.
-export async function createThread({ project, projectName, machine, spaceId, agent, name }) {
+// Folders apply on this computer only. The first is the thread's folder (its working
+// directory); the rest reach the agent as extra directories, which only Claude Code takes.
+export async function createThread({ project, projectName, machine, spaceId, agent, name, folders = [] }) {
   const on = machine ?? null;
+  const [first, ...extra] = on ? [] : folders;
+  const argv = [...agent.run, ...(agent.key === "claude" ? extra.flatMap((f) => ["--add-dir", f]) : [])];
+  const folder = first ? { folder: first } : {};
   const made = spaceId
-    ? await doCommand("tab.new", { space: spaceId, argv: agent.run })
-    : await doCommand("space.new", { name: projectName, machine: on ?? "", argv: agent.run });
+    ? await doCommand("tab.new", { space: spaceId, argv, ...folder })
+    : await doCommand("space.new", { name: projectName, machine: on ?? "", argv, ...folder });
   let addr = made.terminal;
   if (on && addr && !addr.includes("/")) addr = `${on}/${addr}`;
   // Label it so it lands in this project. Its status comes from the agent's live state.
