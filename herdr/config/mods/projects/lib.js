@@ -22,6 +22,8 @@ export const KEYS = {
   created: "projects.created", // project keys made in the UI, even with no threads yet
   threads: "threads.names", // address -> display name
   folders: "projects.folders", // project key -> folders new threads start with (local only)
+  archivedThreads: "projects.archivedThreads", // address -> true when the thread is archived
+  archivedProjects: "projects.archivedProjects", // project key -> true when the project is archived
 };
 
 export const slugify = (s) => (s ?? "").toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
@@ -43,6 +45,14 @@ export function setFolders(key, list) {
 export function setName(key, map, name) {
   const next = { ...(shared(map) ?? {}) };
   if (name) next[key] = name;
+  else delete next[key];
+  setShared(map, next);
+}
+
+// Archive flags are a map of key -> true. Clearing one removes its entry.
+export function setFlag(map, key, on) {
+  const next = { ...(shared(map) ?? {}) };
+  if (on) next[key] = true;
   else delete next[key];
   setShared(map, next);
 }
