@@ -6,8 +6,8 @@
 
 import { View, div, image, svg } from "gpui-kit";
 import { v_flex, h_flex, InputState, Input } from "gpui-base";
-import { agents, terminals, spaces, machines, knownAgents, run, theme, shared, setShared, openOverlay, closeOverlay, props, notify } from "herdr";
-import { STATUSES, RANK, BY_ID, FROM_AGENT, KEYS, slugify, clean, machineOfAddr, setName, createThread } from "./lib.js";
+import { agents, terminals, spaces, machines, knownAgents, pickFolder, run, theme, shared, setShared, openOverlay, closeOverlay, props, notify } from "herdr";
+import { STATUSES, RANK, BY_ID, FROM_AGENT, KEYS, slugify, clean, baseName, machineOfAddr, setName, foldersOf, setFolders, createThread } from "./lib.js";
 
 const stop = (_e, cx) => cx.stop_propagation();
 
@@ -88,6 +88,7 @@ export default class Projects extends View {
     this.error = null;
     this.machine = form.machine ?? null;
     this.projectKey = form.key ?? null;
+    this.folders = this.projectKey ? [...foldersOf(this.projectKey)] : [];
     this.agent = null;
     this.agents = [];
     this.agentsLoading = false;
@@ -123,6 +124,20 @@ export default class Projects extends View {
     closeOverlay(props().overlay);
   }
 
+  // Adds a folder picked on this computer. Folders are local only for now.
+  addFolder(cx) {
+    cx.spawn(async (cx) => {
+      try {
+        const picked = await pickFolder({ prompt: "Attach" });
+        if (picked && !this.folders.includes(picked)) this.folders = [...this.folders, picked];
+        this.error = null;
+      } catch (e) {
+        this.error = `Could not pick a folder: ${String(e?.message ?? e)}`;
+      }
+      cx.notify();
+    });
+  }
+
   fail(message, cx) {
     this.error = message;
     this.busy = false;
@@ -135,6 +150,7 @@ export default class Projects extends View {
     const text = this.input.value().trim();
     if (f.kind === "rename-project") {
       setName(f.key, KEYS.names, text);
+      setFolders(f.key, this.folders);
       return this.close();
     }
     if (f.kind === "rename-thread") {
@@ -167,6 +183,7 @@ export default class Projects extends View {
             spaceId: sameMachine?.spaceId ?? null,
             agent: this.agent,
             name: text,
+            folders: this.folders,
           });
           this.close();
         } catch (e) {
@@ -194,6 +211,22 @@ export default class Projects extends View {
       .child(text);
   }
 
+  // Folder list with add and remove. Shown for a project (rename) and for a new thread on this computer.
+  folderSection(t, cx) {
+    const remove = (p) => (_e, cx) => { this.folders = this.folders.filter((x) => x !== p); this.error = null; cx.notify(); };
+    const folderChip = (p) => h_flex().id(`fd-${p}`).h(28).pl(10).pr(4).gap(4).rounded(8).items_center().border(1)
+      .border_color(t.input).bg(t.raised).text_size(12.3).text_color(t.foreground)
+      .child(div().truncate().child(baseName(p)))
+      .child(div().id(`fdx-${p}`).px(4).text_color(t.dim).cursor_pointer().hover((s) => s.text_color(t.foreground)).on_click(remove(p)).child("×"));
+    const agentNote = this.folders.length > 1 && this.agent && this.agent.key !== "claude";
+    return v_flex().gap(6)
+      .child(div().pt(14).pb(0).text_size(11.5).text_color(t.dim).child("Folders"))
+      .child(h_flex().gap(6).flex_wrap().children(this.folders.map(folderChip))
+        .child(this.chip(t, "fd-add", "+ Folder", false, (_e, cx) => this.addFolder(cx))))
+      .when(!this.folders.length, (el) => el.child(div().text_size(11.5).text_color(t.dim).child("No folders. New threads start in the home folder.")))
+      .when(agentNote, (el) => el.child(div().text_size(11.5).text_color(t.dim).child("Only Claude Code gets the extra folders. Other agents start in the first.")));
+  }
+
   renderForm(t, cx) {
     const f = this.form;
     const titles = {
@@ -216,7 +249,12 @@ export default class Projects extends View {
       .when(f.kind === "new-thread", (el) => el
         .child(label("Project"))
         .child(h_flex().gap(6).flex_wrap().children(data.groups.map((g) =>
-          this.chip(t, `pj-${g.key}`, g.name, this.projectKey === g.key, (_e, cx) => { this.projectKey = g.key; this.error = null; cx.notify(); })))))
+          this.chip(t, `pj-${g.key}`, g.name, this.projectKey === g.key, (_e, cx) => {
+            this.projectKey = g.key;
+            this.folders = [...foldersOf(g.key)];
+            this.error = null;
+            cx.notify();
+          })))))
       .when(f.kind === "new-thread", (el) => el
         .child(label("Machine"))
         .child(h_flex().gap(6).flex_wrap().children(machineNames.map((m) => this.chip(t, `mc-${m ?? "local"}`, machineLabel(m), (this.machine ?? null) === m, (_e, cx) => {
@@ -237,6 +275,7 @@ export default class Projects extends View {
       .when(f.kind === "rename-project" || f.kind === "rename-thread" || f.kind === "new-project" || f.kind === "new-thread", (el) => el
         .child(label(nameLabel))
         .child(Input.new(this.input).h(36).px(10).rounded(9).border_1().border_color(t.input).bg(t.background).text_size(12.8).text_color(t.foreground)))
+      .when(f.kind === "rename-project" || (f.kind === "new-thread" && !this.machine), (el) => el.child(this.folderSection(t, cx)))
       .when(Boolean(this.error), (el) => el.child(div().pt(8).text_size(11.8).text_color(t.blocked).child(this.error)))
       .child(h_flex().pt(18).gap(8).justify_end()
         .child(this.formButton(t, "pf-cancel", "Cancel", false, () => this.close(), false))
@@ -304,7 +343,7 @@ export default class Projects extends View {
         .child(div().text_size(12).font_semibold().text_color(t.muted).child("PROJECTS"))
         .child(h_flex().gap(4)
           .child(headerBtn("new-project", "+ Project", () => this.dialog("new-project", {}, 380, 200)))
-          .child(headerBtn("new-thread", "+ Thread", () => this.dialog("new-thread", {}, 440, 470)))))
+          .child(headerBtn("new-thread", "+ Thread", () => this.dialog("new-thread", {}, 440, 560)))))
       .child(v_flex().id("projects-list").flex_1().gap(10).overflow_y_scrollbar()
         .children(data.groups.length
           ? data.groups.map((g) => v_flex().gap(2)
@@ -313,8 +352,8 @@ export default class Projects extends View {
               .child(div().text_size(11).text_color(t.dim).child(`${g.list.length}`))
               .child(div().flex_1())
               .child(div().id(`pr-${g.key}`).px(4).text_color(t.dim).cursor_pointer().hover((s) => s.text_color(t.foreground))
-                .on_mouse_down("left", stop).on_click(() => this.dialog("rename-project", { key: g.key, name: g.name }, 380, 200)).child("✎"))
-              .child(headerBtn(`pt-${g.key}`, "+", () => this.dialog("new-thread", { key: g.key }, 440, 470))))
+                .on_mouse_down("left", stop).on_click(() => this.dialog("rename-project", { key: g.key, name: g.name }, 380, 300)).child("✎"))
+              .child(headerBtn(`pt-${g.key}`, "+", () => this.dialog("new-thread", { key: g.key }, 440, 560))))
             .children(g.list.map(threadRow)))
           : [div().px(4).text_size(12).text_color(t.dim).child("No projects yet. Use + Project.")]));
   }

@@ -8,7 +8,8 @@ The package contains:
 
 - `settings.json` and `keys.json`
 - the custom `projects` layout
-- the custom `projects`, `project-tabs`, and `usage` mods
+- the custom `projects`, `project-tabs`, `usage`, `workspace-chrome`, and `worktree`
+  mods
 
 Herdr-managed layouts and mods, generated type files and instructions, window
 and project state, shared mod data, update notes, and downloaded metadata stay
