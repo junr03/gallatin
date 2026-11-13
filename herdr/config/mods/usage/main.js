@@ -1,33 +1,14 @@
-// Usage: Claude Code and Codex, from two sources.
-// - Live limits: the same figures Claude Code and Codex show for their plan windows,
-//   read with the login each one already keeps on this Mac (Claude: the Keychain item
-//   "Claude Code-credentials"; Codex: ~/.codex/auth.json). Tokens stay in this mod's memory.
-// - Token use: local transcripts, summed by scan.py.
-// Both refresh every minute.
+// Usage: Claude Code and Codex plan limits, shown as progress bars.
+// Each figure is what Claude Code and Codex show for their plan windows, read with the
+// login each one already keeps on this Mac (Claude: the Keychain item
+// "Claude Code-credentials"; Codex: ~/.codex/auth.json). Tokens stay in this mod's memory.
+// Refreshes every minute.
 
 import { View, div } from "gpui-kit";
 import { v_flex, h_flex } from "gpui-base";
-import { exec, appHome, home, readTextFile, theme } from "herdr";
+import { exec, home, readTextFile, theme } from "herdr";
 
 const REFRESH_MS = 60_000;
-const SCAN = () => `${appHome()}/mods/usage/scan.py`;
-
-function fmt(n) {
-  if (n == null) return "–";
-  if (n >= 1e9) return `${(n / 1e9).toFixed(2)}B`;
-  if (n >= 1e6) return `${(n / 1e6).toFixed(2)}M`;
-  if (n >= 1e3) return `${(n / 1e3).toFixed(1)}K`;
-  return `${n}`;
-}
-
-function ago(iso) {
-  if (!iso) return "";
-  const mins = Math.round((Date.now() - Date.parse(iso)) / 60000);
-  if (mins < 1) return "just now";
-  if (mins < 60) return `${mins}m ago`;
-  if (mins < 60 * 24) return `${Math.round(mins / 60)}h ago`;
-  return `${Math.round(mins / 1440)}d ago`;
-}
 
 // "resets in 2h 10m" from an ISO time or a unix time in seconds.
 function resetsIn(when) {
@@ -97,18 +78,11 @@ async function codexLive() {
   if (!windows.length && spend) {
     windows.push({ label: "Spend limit", pct: spend.used_percent, resetsAt: spend.reset_at });
   }
-  return {
-    windows,
-    plan: d.plan_type ?? null,
-    credits: d.credits ?? null,
-    error: null,
-  };
+  return { windows, error: null };
 }
 
 export default class Usage extends View {
   init(_props, cx) {
-    this.data = null;
-    this.error = null;
     this.live = { claude: null, codex: null };
     this.refresh(cx);
     cx.timer.every(REFRESH_MS, (cx) => this.refresh(cx));
@@ -116,15 +90,6 @@ export default class Usage extends View {
 
   refresh(cx) {
     cx.spawn(async (cx) => {
-      try {
-        const r = await exec("python3", ["-I", SCAN()], { timeout: 60_000 });
-        if (r.code !== 0) throw new Error(r.stderr.trim() || `exit ${r.code}`);
-        this.data = JSON.parse(r.stdout);
-        this.error = null;
-      } catch (err) {
-        this.error = String(err.message ?? err);
-      }
-      cx.notify();
       const [claude, codex] = await Promise.all([
         claudeLive().catch((e) => ({ error: String(e.message ?? e) })),
         codexLive().catch((e) => ({ error: String(e.message ?? e) })),
@@ -149,57 +114,18 @@ export default class Usage extends View {
     ));
   }
 
-  section(t, id, title, agent, live, extra) {
-    const row = (label, w) =>
-      h_flex().justify_between().text_size(12).child(
-        div().text_color(t.muted).child(label)
-      ).child(
-        div().text_color(t.foreground).child(`${fmt(w.total)} · cache ${fmt(w.cached)}`)
-      );
+  section(t, id, title, live) {
     return v_flex().id(id).gap(5).child(
-      h_flex().justify_between().items_center()
-        .child(div().text_size(13).font_semibold().child(title))
-        .child(div().text_size(11).text_color(t.dim).child(extra ?? ""))
-    ).child(this.limitRows(t, `${id}-limits`, live))
-      .child(row("Today", agent.today))
-      .child(row("Last 7 days", agent.week))
-      .child(row("All time", agent.all));
-  }
-
-  recent(t, id, list) {
-    if (!list?.length) return div().text_size(11).text_color(t.dim).child("No threads yet");
-    return v_flex().id(id).gap(2).children(list.map((th) =>
-      h_flex().gap(6).text_size(12).child(
-        div().flex_1().truncate().text_color(t.foreground).child(th.name)
-      ).child(
-        div().flex_none().text_color(t.dim).child(`${fmt(th.total)} · ${ago(th.updated)}`)
-      )
-    ));
+      div().text_size(13).font_semibold().child(title)
+    ).child(this.limitRows(t, `${id}-limits`, live));
   }
 
   render(cx) {
     const t = theme();
-    const body = [];
-    if (this.error) {
-      body.push(div().text_size(12).text_color(t.blocked).child(`Could not read usage: ${this.error}`));
-    } else if (!this.data) {
-      body.push(div().text_size(12).text_color(t.dim).child("Reading usage…"));
-    } else {
-      const { claude, codex } = this.data;
-      const creditText = this.live.codex?.credits
-        ? this.live.codex.credits.unlimited ? "unlimited" : `balance ${this.live.codex.credits.balance}`
-        : null;
-      const plan = this.live.codex?.plan ?? codex.plan;
-      body.push(this.section(t, "usage-claude", "Claude Code", claude, this.live.claude));
-      body.push(this.recent(t, "usage-claude-recent", claude.recent));
-      body.push(div().h(1).bg(t.border));
-      body.push(this.section(t, "usage-codex", "Codex", codex, this.live.codex,
-        plan ? `${plan}${creditText ? ` · ${creditText}` : ""}` : null));
-      body.push(this.recent(t, "usage-codex-recent", codex.recent));
-    }
-
     return v_flex().size_full().p(10).gap(10).text_color(t.foreground).overflow_y_scrollbar()
       .child(div().px(4).text_size(12).font_semibold().text_color(t.muted).child("USAGE"))
-      .children(body);
+      .child(this.section(t, "usage-claude", "Claude Code", this.live.claude))
+      .child(div().h(1).bg(t.border))
+      .child(this.section(t, "usage-codex", "Codex", this.live.codex));
   }
 }
