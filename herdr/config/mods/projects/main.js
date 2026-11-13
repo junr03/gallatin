@@ -7,7 +7,7 @@
 import { View, div, image, svg } from "gpui-kit";
 import { v_flex, h_flex, InputState, Input } from "gpui-base";
 import { agents, terminals, spaces, machines, knownAgents, pickFolder, run, theme, shared, setShared, openOverlay, closeOverlay, props, notify } from "herdr";
-import { STATUSES, RANK, BY_ID, FROM_AGENT, KEYS, slugify, clean, baseName, machineOfAddr, setName, foldersOf, setFolders, createThread } from "./lib.js";
+import { STATUSES, RANK, BY_ID, FROM_AGENT, KEYS, slugify, clean, baseName, machineOfAddr, setName, setFlag, foldersOf, setFolders, createThread } from "./lib.js";
 
 const stop = (_e, cx) => cx.stop_propagation();
 
@@ -41,6 +41,8 @@ function collect() {
   const names = shared(KEYS.names) ?? {};
   const threadNames = shared(KEYS.threads) ?? {};
   const created = shared(KEYS.created) ?? [];
+  const archivedThreads = shared(KEYS.archivedThreads) ?? {};
+  const archivedProjects = shared(KEYS.archivedProjects) ?? {};
 
   const threads = agents().map((a) => {
     const labels = labelsOf.get(a.address) ?? {};
@@ -54,6 +56,7 @@ function collect() {
       status: statusOf(a, labels, overrides),
       title: threadNames[a.address] ?? (clean(a.tab_name) || a.program?.name || a.address),
       fallbackName: space?.name ?? key,
+      archived: Boolean(archivedThreads[a.address]),
     };
   });
 
@@ -66,7 +69,8 @@ function collect() {
   for (const th of threads) ensure(th.key, th.fallbackName).list.push(th);
   for (const g of groups.values()) {
     g.list.sort((x, y) => RANK[y.status.id] - RANK[x.status.id] || y.a.seq - x.a.seq);
-    g.urgency = Math.max(0, ...g.list.map((th) => RANK[th.status.id]));
+    g.archived = Boolean(archivedProjects[g.key]);
+    g.urgency = Math.max(0, ...g.list.filter((th) => !th.archived).map((th) => RANK[th.status.id]));
   }
   const ordered = [...groups.values()].sort((x, y) => y.urgency - x.urgency || x.name.localeCompare(y.name));
   return { threads, groups: ordered, count: threads.length };
@@ -164,6 +168,7 @@ export default class Projects extends View {
       if (taken) return this.fail(`A project called "${text}" already exists.`, cx);
       setShared(KEYS.created, [...(shared(KEYS.created) ?? []), key]);
       setName(key, KEYS.names, text);
+      setFolders(key, this.folders);
       return this.close();
     }
     if (f.kind === "new-thread") {
@@ -248,7 +253,7 @@ export default class Projects extends View {
       .child(h_flex().items_center().child(div().flex_1().text_size(15).font_semibold().child(titles[f.kind] ?? "")).child(div().text_size(11).text_color(t.dim).child("Esc")))
       .when(f.kind === "new-thread", (el) => el
         .child(label("Project"))
-        .child(h_flex().gap(6).flex_wrap().children(data.groups.map((g) =>
+        .child(h_flex().gap(6).flex_wrap().children(data.groups.filter((g) => !g.archived).map((g) =>
           this.chip(t, `pj-${g.key}`, g.name, this.projectKey === g.key, (_e, cx) => {
             this.projectKey = g.key;
             this.folders = [...foldersOf(g.key)];
@@ -275,7 +280,7 @@ export default class Projects extends View {
       .when(f.kind === "rename-project" || f.kind === "rename-thread" || f.kind === "new-project" || f.kind === "new-thread", (el) => el
         .child(label(nameLabel))
         .child(Input.new(this.input).h(36).px(10).rounded(9).border_1().border_color(t.input).bg(t.background).text_size(12.8).text_color(t.foreground)))
-      .when(f.kind === "rename-project" || (f.kind === "new-thread" && !this.machine), (el) => el.child(this.folderSection(t, cx)))
+      .when(f.kind === "rename-project" || f.kind === "new-project" || (f.kind === "new-thread" && !this.machine), (el) => el.child(this.folderSection(t, cx)))
       .when(Boolean(this.error), (el) => el.child(div().pt(8).text_size(11.8).text_color(t.blocked).child(this.error)))
       .child(h_flex().pt(18).gap(8).justify_end()
         .child(this.formButton(t, "pf-cancel", "Cancel", false, () => this.close(), false))
@@ -313,11 +318,19 @@ export default class Projects extends View {
     openOverlay({ mod: "projects", kind: "dialog", modal: true, width, height, props: { form: { kind, ...extra } } });
   }
 
-  renderSidebar(t) {
+  renderSidebar(t, cx) {
     const data = collect();
     const headerBtn = (id, text, action) => div().id(id).px(6).h(20).rounded(5).flex().items_center()
       .text_size(11.5).text_color(t.muted).cursor_pointer().hover((s) => s.bg(t.hover).text_color(t.foreground))
       .on_mouse_down("left", stop).on_click(action).child(text);
+    // An icon-only button from workspace-chrome's icon set.
+    const iconBtn = (id, file, action) => div().id(id).w(18).h(18).rounded(5).flex().items_center().justify_center()
+      .cursor_pointer().hover((s) => s.bg(t.hover)).on_mouse_down("left", stop).on_click(() => action())
+      .child(svg(`mods/workspace-chrome/${file}.svg`).size(13).flex_none().text_color(t.dim));
+    const active = data.groups.filter((g) => !g.archived);
+    const visible = (g) => g.list.filter((th) => !th.archived);
+    const archivedCount = data.groups.filter((g) => g.archived).length
+      + active.reduce((n, g) => n + g.list.filter((th) => th.archived).length, 0);
     const threadRow = (th) => {
       const st = BY_ID[th.status.id];
       const color = t[st.color];
@@ -330,6 +343,7 @@ export default class Projects extends View {
           .on_mouse_down("left", stop)
           .on_click(() => this.dialog("rename-thread", { address: th.a.address, name: th.title }, 380, 200))
           .child("✎"))
+        .child(iconBtn(`ar-${th.a.address}`, "archive", () => setFlag(KEYS.archivedThreads, th.a.address, true)))
         .child(tag(t, th.machine ?? "this computer"))
         .child(h_flex().id(`st-btn-${th.a.address}`).flex_none().px(6).h(18).gap(4).rounded(5).bg(color + "26").items_center()
           .text_size(10.5).font_semibold().text_color(color).cursor_pointer()
@@ -342,26 +356,52 @@ export default class Projects extends View {
       .child(h_flex().px(4).justify_between().items_center()
         .child(div().text_size(12).font_semibold().text_color(t.muted).child("PROJECTS"))
         .child(h_flex().gap(4)
-          .child(headerBtn("new-project", "+ Project", () => this.dialog("new-project", {}, 380, 200)))
+          .child(headerBtn("new-project", "+ Project", () => this.dialog("new-project", {}, 380, 300)))
           .child(headerBtn("new-thread", "+ Thread", () => this.dialog("new-thread", {}, 440, 560)))))
       .child(v_flex().id("projects-list").flex_1().gap(10).overflow_y_scrollbar()
-        .children(data.groups.length
-          ? data.groups.map((g) => v_flex().gap(2)
+        .children(active.length
+          ? active.map((g) => v_flex().gap(2)
             .child(h_flex().px(4).h(24).gap(6).items_center()
               .child(div().text_size(13).font_semibold().truncate().child(g.name))
-              .child(div().text_size(11).text_color(t.dim).child(`${g.list.length}`))
+              .child(div().text_size(11).text_color(t.dim).child(`${visible(g).length}`))
               .child(div().flex_1())
               .child(div().id(`pr-${g.key}`).px(4).text_color(t.dim).cursor_pointer().hover((s) => s.text_color(t.foreground))
                 .on_mouse_down("left", stop).on_click(() => this.dialog("rename-project", { key: g.key, name: g.name }, 380, 300)).child("✎"))
-              .child(headerBtn(`pt-${g.key}`, "+", () => this.dialog("new-thread", { key: g.key }, 440, 560))))
-            .children(g.list.map(threadRow)))
-          : [div().px(4).text_size(12).text_color(t.dim).child("No projects yet. Use + Project.")]));
+              .child(headerBtn(`pt-${g.key}`, "+", () => this.dialog("new-thread", { key: g.key }, 440, 560)))
+              .child(iconBtn(`pa-${g.key}`, "archive", () => setFlag(KEYS.archivedProjects, g.key, true))))
+            .children(visible(g).map(threadRow)))
+          : [div().px(4).text_size(12).text_color(t.dim).child(data.groups.length ? "All projects are archived." : "No projects yet. Use + Project.")]))
+      .when(archivedCount > 0, (el) => el.child(this.archivedBox(t, data, active, archivedCount)));
+  }
+
+  // Archived projects and threads, collapsed by default. Archiving a project hides its threads;
+  // restoring the project brings them back unless they were archived on their own.
+  archivedBox(t, data, active, count) {
+    const restoreRow = (id, title, sub, action) => h_flex().id(id).h(26).px(6).gap(6).rounded(6).items_center().text_size(12)
+      .hover((s) => s.bg(t.hover))
+      .child(div().flex_1().truncate().text_color(t.muted).child(title))
+      .child(div().flex_none().text_size(11).text_color(t.dim).child(sub))
+      .child(div().id(`${id}-restore`).flex_none().px(4).text_size(11.5).text_color(t.foreground).cursor_pointer()
+        .hover((s) => s.text_color(t.accent)).on_mouse_down("left", stop).on_click(() => action()).child("Restore"));
+    const archivedProjects = data.groups.filter((g) => g.archived);
+    const archivedThreads = active.flatMap((g) => g.list.filter((th) => th.archived).map((th) => ({ th, g })));
+    return v_flex().gap(4).pt(4)
+      .child(div().h(1).bg(t.border))
+      .child(h_flex().px(4).h(22).items_center().cursor_pointer().text_size(11.5).text_color(t.muted)
+        .hover((s) => s.text_color(t.foreground))
+        .on_click((_e, cx) => { this.showArchived = !this.showArchived; cx.notify(); })
+        .child(`${this.showArchived ? "▾" : "▸"} Archived (${count})`))
+      .when(this.showArchived, (el) => el.child(v_flex().gap(2).pl(8).overflow_y_scrollbar()
+        .children(archivedProjects.map((g) => restoreRow(`ap-${g.key}`, g.name, `project · ${g.list.length}`,
+          () => setFlag(KEYS.archivedProjects, g.key, false))))
+        .children(archivedThreads.map(({ th, g }) => restoreRow(`at-${th.a.address}`, th.title, g.name,
+          () => setFlag(KEYS.archivedThreads, th.a.address, false))))));
   }
 
   render(cx) {
     const t = theme();
     if (props()?.form) return this.renderForm(t, cx);
     if (props()?.statusMenu) return this.statusMenu(t);
-    return this.renderSidebar(t);
+    return this.renderSidebar(t, cx);
   }
 }
