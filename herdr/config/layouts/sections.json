@@ -72,7 +72,10 @@
               },
               "min": 200,
               "content": {
-                "mod": "usage"
+                "mod": "usage",
+                "props": {
+                  "sidebar": true
+                }
               }
             }
           ]

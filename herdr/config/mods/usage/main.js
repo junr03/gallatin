@@ -8,7 +8,7 @@
 
 import { View, div } from "gpui-kit";
 import { v_flex, h_flex } from "gpui-base";
-import { exec, home, readTextFile, theme } from "herdr";
+import { exec, home, readTextFile, theme, props } from "herdr";
 
 const TICK_MS = 60_000; // how often the view checks whether a service is due
 const REFRESH_MS = 5 * 60_000; // normal wait between requests to one service
@@ -172,14 +172,22 @@ export default class Usage extends View {
     ));
   }
 
-  section(t, id, title, live) {
+  section(t, id, title, live, sidebar = false) {
     return v_flex().id(id).gap(5).child(
-      div().text_size(13).font_semibold().child(title)
+      div().text_size(13).when(!sidebar, el => el.font_semibold()).child(title)
     ).child(this.limitRows(t, `${id}-limits`, live));
   }
 
   render(cx) {
     const t = theme();
+    if (props()?.sidebar) {
+      return v_flex().size_full().min_h(0).bg(t.chrome).border_t(1).border_color(t.border).text_size(13).text_color(t.foreground)
+        .child(h_flex().px(16).h(41).pt(14).pb(5).flex_none().items_center()
+          .child(div().text_size(11.5).font_medium().text_color(t.dim).child("Usage")))
+        .child(v_flex().flex_1().min_h(0).px(16).pb(14).gap(12).overflow_y_scrollbar().mode("always")
+          .child(this.section(t, "usage-claude", "Claude Code", shared.claude.live, true))
+          .child(this.section(t, "usage-codex", "Codex", shared.codex.live, true)));
+    }
     return v_flex().size_full().p(10).gap(10).text_color(t.foreground).overflow_y_scrollbar()
       .child(div().px(4).text_size(12).font_semibold().text_color(t.muted).child("USAGE"))
       .child(this.section(t, "usage-claude", "Claude Code", shared.claude.live))
