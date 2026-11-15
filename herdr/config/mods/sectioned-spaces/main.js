@@ -324,7 +324,7 @@ export default class Spaces extends View {
             .on_click((_e, cx) => { cx.stop_propagation(); this.sectionForm(section); }).child("✎"))
           .child(div().id(`section-remove-${key}`).px(4).cursor_pointer().tooltip("Delete section; spaces become unassigned")
             .on_click((_e, cx) => { cx.stop_propagation(); this.removeSection(section.id); }).child("×")));
-      return [head, ...mine.map(r => this.row(r, t))];
+      return [div().pl(8).child(head), ...mine.map(r => div().pl(16).child(this.row(r, t)))];
     });
   }
 
