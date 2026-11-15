@@ -27,7 +27,7 @@ is macOS-specific; the local login must exist on each machine for its limits to 
 ## Sections layout
 
 Select **sections** in Herdr's layout picker to use the standard Herdr window
-with a sectioned Spaces pane. Use the section button beside Spaces to create
+with a sectioned Spaces pane and the Usage pane below Agents. Use the section button beside Spaces to create
 named sections; use the pencil or × on a section to rename or delete it.
 Drag a space onto a section heading or another space to move it. Deleting a
 section puts its spaces in Unassigned. Sections and assignments are saved in

@@ -63,6 +63,17 @@
               "content": {
                 "mod": "agents"
               }
+            },
+            {
+              "id": "usage",
+              "type": "block",
+              "size": {
+                "px": 300
+              },
+              "min": 200,
+              "content": {
+                "mod": "usage"
+              }
             }
           ]
         },
