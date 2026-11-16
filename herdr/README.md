@@ -52,3 +52,10 @@ The activation copies only paths present in the package into
 `~/.config/herdr-app`, replacing them with the selected Gallatin revision. Keep local experiments
 until they are ready, then port the final changes into `herdr/config` and open a pull request to Gallatin
 before activating a revision that replaces them.
+
+## Creator Micro 2
+
+The optional [Micro 2 bridge](micro2/README.md) maps six stable Herdr agents to
+the keyboard's existing agent keys, with live status colors and press-to-focus.
+It runs separately from the layout/config package and includes a per-user macOS
+login-service installer.
