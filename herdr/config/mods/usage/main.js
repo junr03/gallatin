@@ -3,7 +3,7 @@
 // login each one already keeps on this Mac (Claude: the Keychain item
 // "Claude Code-credentials"; Codex: ~/.codex/auth.json). Tokens stay in this mod's memory.
 // Each service is asked at most every five minutes. After a failure the wait doubles, up to an
-// hour, and a Retry-After header from the server is honored. Every view shares one cache, so
+// hour, and Retry-After is honored when the runtime exposes response headers. Every view shares one cache, so
 // several panes do not multiply the requests.
 
 import { View, div } from "gpui-kit";
@@ -23,7 +23,9 @@ const shared = {
 
 // Seconds from a Retry-After header, or null.
 function retryAfterMs(r) {
-  const s = Number(r.headers.get("retry-after"));
+  // Herdr's ShellFetchResponse does not currently expose response headers.
+  // Keep HTTP error handling and backoff working in that runtime too.
+  const s = Number(r.headers?.get?.("retry-after"));
   return Number.isFinite(s) && s > 0 ? s * 1000 : null;
 }
 
