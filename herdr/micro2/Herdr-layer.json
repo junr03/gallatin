@@ -1,0 +1,101 @@
+{
+  "keyboard": "creator_micro_v2",
+  "language": "us",
+  "layer": {
+    "id": 0,
+    "name": "Herdr",
+    "color": "#4AFAC5",
+    "os": 0,
+    "layout": {
+      "base": [
+        [
+          {
+            "keycode": "KV_OAI_AG00"
+          },
+          {
+            "keycode": "KV_OAI_AG01"
+          }
+        ],
+        [
+          {
+            "keycode": "KV_OAI_AG02"
+          },
+          {
+            "keycode": "KV_OAI_AG03"
+          },
+          {
+            "keycode": "KV_OAI_AG04"
+          },
+          {
+            "keycode": "KV_OAI_AG05"
+          }
+        ],
+        [
+          {
+            "keycode": "KC_NONE"
+          },
+          {
+            "keycode": "KC_NONE"
+          },
+          {
+            "keycode": "KC_NONE"
+          },
+          {
+            "keycode": "KC_NONE"
+          }
+        ],
+        [
+          {
+            "keycode": "KC_NONE"
+          },
+          {
+            "keycode": "KC_NONE"
+          },
+          {
+            "keycode": "KC_NONE"
+          }
+        ]
+      ],
+      "encoders": [
+        [
+          {
+            "keycode": "KC_NONE"
+          },
+          {
+            "keycode": "KC_NONE"
+          },
+          {
+            "keycode": "KC_NONE"
+          }
+        ]
+      ],
+      "buttons": [],
+      "joystick": {
+        "type": "VENDOR",
+        "sectors": []
+      }
+    },
+    "lights": {
+      "backlight": {
+        "effect": "off",
+        "brightness": 1,
+        "speed": 0.5,
+        "magic": 1,
+        "color": "#000000"
+      },
+      "underglow": {
+        "effect": "solid",
+        "brightness": 0.15,
+        "speed": 0.5,
+        "magic": 1,
+        "color": "#4AFAC5"
+      }
+    }
+  },
+  "actions": [],
+  "multiactions": [],
+  "smartActions": [],
+  "actionGroups": [],
+  "multiactionGroups": [],
+  "smartActionGroups": []
+}

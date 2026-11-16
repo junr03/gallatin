@@ -26,6 +26,27 @@ Requires macOS, Node.js 20+, Herdr, and a Creator Micro 2 over USB. The six keys
 must already be mapped to `KV_OAI_AG00` through `KV_OAI_AG05` in Work Louder Input
 (the existing ChatGPT agent layer works).
 
+### Import the Herdr layer
+
+Import [Herdr-layer.json](Herdr-layer.json) using the **+** beside the layer
+numbers → **Import layer**. It adds a macOS layer named **Herdr** to the selected
+Creator Micro 2 profile. Select it and save/apply through Input as usual.
+The first two physical rows map to `AG00`–`AG05` in reading order. The seven
+remaining keys and encoder are unassigned; the layer uses a dim mint underglow.
+The already-running Herdr bridge supplies the six agent keys' live colors and
+press-to-focus behavior; JSON alone cannot provide live state.
+
+For automatic switching, open the imported layer's settings and use **App linking**,
+then focus Herdr for five seconds and return to Input. App links live in Input's separate linked-app
+registry and are not included by its layer exporter, so this step is manual.
+Your existing ChatGPT layer can remain alongside Herdr.
+
+This is Input's **layer export** format (`layer.layout.base` with key objects),
+not a raw device `keymap.json` or a profile import. Its shape was checked against
+the installed Input application's layer model and import resolver.
+
+### Run the bridge
+
 From this directory:
 
 ```sh
