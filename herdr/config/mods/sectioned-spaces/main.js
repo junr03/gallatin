@@ -266,7 +266,26 @@ export default class Spaces extends View {
   }
 
   sectionData() {
-    return shared("sectioned-spaces.sections") ?? { sections: [], assignments: {} };
+    const data = shared("sectioned-spaces.sections") ?? { sections: [], assignments: {} };
+    if (data.sections.every(s => "machine" in s)) return data;
+    // Split old shared headings by the machines of their assigned spaces.
+    // Keep an unused heading on this computer so it remains editable.
+    const assignments = { ...data.assignments };
+    const sp = spaces();
+    const sections = data.sections.flatMap(section => {
+      if ("machine" in section) return [section];
+      const members = sp.filter(s => data.assignments[s.id] === section.id);
+      const owners = [...new Set(members.map(s => s.machine ?? null))];
+      if (!owners.length) owners.push(null);
+      return owners.map((machine, i) => {
+        const id = i === 0 ? section.id : `${section.id}@${JSON.stringify(machine)}`;
+        for (const s of members) if ((s.machine ?? null) === machine) assignments[s.id] = id;
+        return { ...section, id, machine };
+      });
+    });
+    const migrated = { ...data, sections, assignments };
+    setShared("sectioned-spaces.sections", migrated);
+    return migrated;
   }
 
   assign(id, section) {
@@ -289,7 +308,7 @@ export default class Spaces extends View {
     const id = this.form.id ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`;
     const sections = this.form.id
       ? data.sections.map(s => s.id === id ? { ...s, name } : s)
-      : [...data.sections, { id, name }];
+      : [...data.sections, { id, name, machine: this.form.machine ?? null }];
     setShared("sectioned-spaces.sections", { ...data, sections });
     closeOverlay(props().overlay);
   }
@@ -304,18 +323,21 @@ export default class Spaces extends View {
 
   sectionRows(rows, t, machine) {
     const data = this.sectionData();
-    const known = new Set(data.sections.map(s => s.id));
-    const groups = [{ id: null, name: "Unassigned" }, ...data.sections];
+    const sections = data.sections.filter(s => s.machine === machine);
+    const known = new Set(sections.map(s => s.id));
+    const groups = [{ id: null }, ...sections];
     return groups.flatMap(section => {
       const mine = rows.filter(r => {
         const id = data.assignments[r.w.id];
         return section.id ? id === section.id : !id || !known.has(id);
       });
-      const key = `${machine ?? "local"}-${section.id ?? "unassigned"}`;
+      if (!section.id) return mine.map(r => this.row(r, t));
+      const key = `${machine ?? "local"}-${section.id}`;
       const head = h_flex().id(`section-${key}`).h(27).flex_none().px(8).gap(5).items_center()
         .rounded(6).text_size(11).text_color(t.dim).hover(s => s.bg(t.hover))
         .on_mouse_up("left", (_e, cx) => {
-          if (this.pressed !== null) this.assign(this.pressed, section.id);
+          const source = spaces().find(s => s.id === this.pressed);
+          if (source && (source.machine ?? null) === machine) this.assign(source.id, section.id);
           this.pressed = null; this.over = null; cx.stop_propagation(); cx.notify();
         })
         .child(div().flex_1().truncate().child(section.name))
@@ -339,7 +361,7 @@ export default class Spaces extends View {
         || spaces().some(s => (s.machine ?? null) === m && !this.shown.has(s.id));
     };
     const loadingRow = m => h_flex().id(`machine-loading-${m ?? "local"}`).h(28).flex_none().px(collapsed ? 0 : 8).items_center().when(collapsed, el => el.justify_center()).text_size(12).text_color(t.dim).child(collapsed ? "…" : "Loading…");
-    if (!remote.length) return collapsed ? rows.map(draw) : this.sectionRows(rows, t, null);
+    if (!remote.length && collapsed) return rows.map(draw);
     const machineNames = [null, ...remote];
     return machineNames.flatMap((m) => {
       const mine = rows.filter((r) => (r.w.machine ?? null) === m);
@@ -362,7 +384,15 @@ export default class Spaces extends View {
         })
         .when(!collapsed, el => el.child(icon))
         .when(collapsed, el => el.child(div().relative().flex_none().child(icon).when(Boolean(m), el => el.child(badge))))
+        .on_mouse_up("left", (_e, cx) => {
+          const source = spaces().find(s => s.id === this.pressed);
+          if (source && (source.machine ?? null) === m) this.assign(source.id, null);
+          this.pressed = null; this.over = null; cx.stop_propagation(); cx.notify();
+        })
         .when(!collapsed, el => el.child(div().flex_1().truncate().child(m ?? "This computer"))
+          .child(div().id(`section-new-${m ?? "local"}`).flex_none().px(4).rounded(4)
+            .tooltip("New section").hover(s => s.bg(t.hover).text_color(t.foreground))
+            .on_click((_e, cx) => { cx.stop_propagation(); this.sectionForm({ machine: m }); }).child("▤"))
           .when(!connected && !rebuilt && !login, el => el.child(div().flex_none().child((machine?.state ?? "asleep").replace(/_/g, " "))))
           .when(rebuilt, el => el.child(h_flex().flex_none().gap(3).items_center()
             .child(div().max_w(140).truncate().child(repair?.error || "rebuilt ·"))
@@ -459,7 +489,8 @@ export default class Spaces extends View {
         this.over = null;
         if (from !== null && over === w.id && from !== w.id) {
           const source = spaces().find(s => s.id === from);
-          this.assign(from, this.sectionData().assignments[w.id] ?? null);
+          if (source && (source.machine ?? null) === (w.machine ?? null))
+            this.assign(from, this.sectionData().assignments[w.id] ?? null);
           const index = spaces().findIndex(s => s.id === w.id);
           if (source && (source.machine ?? null) === (w.machine ?? null) && index !== -1)
             run("space.move", { id: from, index: index + 1 });
@@ -525,10 +556,7 @@ export default class Spaces extends View {
     return v_flex().size_full().min_h(0).bg(t.chrome).text_size(13)
       .child(h_flex().h(31).pl(16).pr(10).items_center().justify_between().text_size(11.5).text_color(t.dim)
         .when(collapsed, el => el.pl(0).pr(0).justify_center())
-        .when(!collapsed, el => el.child(div().flex_1().child("Spaces"))
-          .child(div().id("section-new").size(26).flex().items_center().justify_center().rounded(6)
-            .tooltip("New section").hover(s => s.bg(t.hover).text_color(t.foreground))
-            .on_click(() => this.sectionForm(null)).child("▤")))
+        .when(!collapsed, el => el.child(div().flex_1().child("Spaces")))
         .child(div().id("space-new").size(26).flex_none().flex().items_center().justify_center().rounded(6).hover(s => s.bg(t.hover).text_color(t.foreground))
           .on_click(() => run("space.new")).child(svg("mods/workspace-chrome/plus.svg").size(14))))
       .child(v_flex().flex_1().min_h(0).px(collapsed ? 0 : 8).pb(14).overflow_y_scrollbar().mode("always")
