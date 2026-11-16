@@ -79,3 +79,14 @@ test('old shared sections split by assigned machines and keep their spaces', () 
   }
   assert.equal(view.sectionData(), data);
 });
+
+
+test('legacy assignments survive a remote machine loading after migration', () => {
+  const spaces = [{ id: 'a' }];
+  const { view } = setup({ sections: [{ id: 's', name: 'Work' }], assignments: { a: 's', b: 's' } }, spaces);
+  view.sectionData();
+  spaces.push({ id: 'b', machine: 'remote' });
+  const data = view.sectionData();
+  assert.equal(data.sections.find(s => s.id === data.assignments.b).machine, 'remote');
+  assert.equal(data.sections.find(s => s.id === data.assignments.a).machine, null);
+});

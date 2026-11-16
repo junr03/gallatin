@@ -267,7 +267,28 @@ export default class Spaces extends View {
 
   sectionData() {
     const data = shared("sectioned-spaces.sections") ?? { sections: [], assignments: {} };
-    if (data.sections.every(s => "machine" in s)) return data;
+    if (data.sections.every(s => "machine" in s)) {
+      // A remote machine may load after the initial migration. Resolve its old
+      // assignments then, rather than dropping them while it is unavailable.
+      const sections = [...data.sections], assignments = { ...data.assignments };
+      let changed = false;
+      for (const space of spaces()) {
+        const section = sections.find(s => s.id === assignments[space.id]);
+        const machine = space.machine ?? null;
+        if (!section?.legacyId || section.machine === machine) continue;
+        let target = sections.find(s => s.legacyId === section.legacyId && s.machine === machine);
+        if (!target) {
+          target = { ...section, id: `${section.legacyId}@${JSON.stringify(machine)}`, machine };
+          sections.push(target);
+        }
+        assignments[space.id] = target.id;
+        changed = true;
+      }
+      if (!changed) return data;
+      const resolved = { ...data, sections, assignments };
+      setShared("sectioned-spaces.sections", resolved);
+      return resolved;
+    }
     // Split old shared headings by the machines of their assigned spaces.
     // Keep an unused heading on this computer so it remains editable.
     const assignments = { ...data.assignments };
@@ -280,7 +301,7 @@ export default class Spaces extends View {
       return owners.map((machine, i) => {
         const id = i === 0 ? section.id : `${section.id}@${JSON.stringify(machine)}`;
         for (const s of members) if ((s.machine ?? null) === machine) assignments[s.id] = id;
-        return { ...section, id, machine };
+        return { ...section, id, machine, legacyId: section.id };
       });
     });
     const migrated = { ...data, sections, assignments };
