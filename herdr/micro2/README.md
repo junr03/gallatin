@@ -36,10 +36,21 @@ remaining keys and encoder are unassigned; the layer uses a dim mint underglow.
 The already-running Herdr bridge supplies the six agent keys' live colors and
 press-to-focus behavior; JSON alone cannot provide live state.
 
-For automatic switching, open the imported layer's settings and use **App linking**,
-then focus Herdr for five seconds and return to Input. App links live in Input's separate linked-app
-registry and are not included by its layer exporter, so this step is manual.
-Your existing ChatGPT layer can remain alongside Herdr.
+Select **Herdr** using its layer number in Input. No layer-settings step is
+required. Your existing ChatGPT layer can remain alongside Herdr.
+
+Input locks the editor and hides layer settings on Creator Micro 2 layers that
+contain any `KV_OAI_` keycode. Its “To edit this layer please use ChatGPT app”
+message also appears on this Herdr layer: the check uses keycodes, not the layer
+name or which app drives the keyboard. The layer can still be selected and used
+with the Herdr bridge; opening ChatGPT is not required for this setup.
+
+Consequently, Input's **App linking** control is unavailable for this imported
+layer. Choose the layer manually. Foreground-app detection in the bridge controls
+USB access; it does not switch the keyboard's active layer. The import file
+already contains the six agent mappings and lighting configuration. Change the
+JSON and reimport it if those settings need to change; retaining the agent
+keycodes also retains Input's editor lock.
 
 This is Input's **layer export** format (`layer.layout.base` with key objects),
 not a raw device `keymap.json` or a profile import. Its shape was checked against
