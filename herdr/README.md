@@ -27,12 +27,13 @@ is macOS-specific; the local login must exist on each machine for its limits to 
 ## Sections layout
 
 Select **sections** in Herdr's layout picker to use the standard Herdr window
-with a sectioned Spaces pane and the Usage pane below Agents. Use the section button beside Spaces to create
-named sections; use the pencil or × on a section to rename or delete it.
+with a sectioned Spaces pane and the Usage pane below Agents. Use the section button on each machine heading to create
+named sections on that machine; use the pencil or × on a section to rename or delete it.
 Drag a space onto a section heading or another space to move it. Deleting a
-section puts its spaces in Unassigned. Sections and assignments are saved in
-Herdr's shared mod state; they are not part of this package. On multiple
-machines, the same section headings appear under each machine. Expand the
+section returns its spaces to the top, directly under the machine heading.
+Drag a space onto its machine heading to remove it from a section. Sections and assignments are saved in
+Herdr's shared mod state; they are not part of this package. Each section belongs to one machine. Existing shared sections are split across
+the machines of their assigned spaces; unused sections stay on this computer. Expand the
 sidebar to manage sections.
 
 ## Home Manager
