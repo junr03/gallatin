@@ -4,20 +4,29 @@ import { mkdirSync, writeFileSync, rmSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { setTimeout as delay } from 'node:timers/promises';
 
 if (process.platform !== 'darwin') throw new Error('Requires macOS');
 const label = 'dev.herdr.micro2';
 const domain = `gui/${process.getuid()}`;
 const folder = join(homedir(), 'Library/LaunchAgents');
 const plist = join(folder, `${label}.plist`);
-function unload() {
+async function unload() {
   try { execFileSync('/bin/launchctl', ['bootout', `${domain}/${label}`], { stdio: 'pipe' }); }
   catch (error) {
     // bootout also fails if it is not loaded. bootstrap below reports real install errors.
   }
+  // bootout can return before launchd finishes removing a SIGTERMed service.
+  // Bootstrapping during that interval fails with "Input/output error".
+  for (let attempt = 0; attempt < 100; attempt++) {
+    try { execFileSync('/bin/launchctl', ['print', `${domain}/${label}`], { stdio: 'pipe' }); }
+    catch { return; }
+    await delay(100);
+  }
+  throw new Error('Previous Herdr Micro 2 service has not stopped; retry installation.');
 }
 if (process.argv.includes('--uninstall')) {
-  unload();
+  await unload();
   rmSync(plist, { force: true });
   console.log('Removed Herdr Micro 2 login service. The checkout is unchanged.');
 } else {
@@ -43,7 +52,7 @@ if (process.argv.includes('--uninstall')) {
 <key>StandardOutPath</key><string>${xml(join(logs, 'bridge.log'))}</string>
 <key>StandardErrorPath</key><string>${xml(join(logs, 'bridge.error.log'))}</string>
 </dict></plist>\n`;
-  unload();
+  await unload();
   writeFileSync(plist, text);
   execFileSync('/usr/bin/plutil', ['-lint', plist], { stdio: 'inherit' });
   execFileSync('/bin/launchctl', ['bootstrap', domain, plist], { stdio: 'inherit' });

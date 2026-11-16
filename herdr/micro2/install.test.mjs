@@ -7,7 +7,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 // Exercise the actual installer without contacting the user's launchd session.
-test('login service monitors completion while Herdr is behind other apps', {
+test('login service waits for shutdown and monitors completion behind other apps', {
   skip: process.platform !== 'darwin',
 }, () => {
   const folder = mkdtempSync(join(tmpdir(), 'herdr-micro2-install-'));
@@ -18,9 +18,19 @@ test('login service monitors completion while Herdr is behind other apps', {
       import cp from 'node:child_process';
       import {syncBuiltinESMExports} from 'node:module';
       os.homedir = () => ${JSON.stringify(folder)};
+      let unloadPolls = 0;
       cp.execFileSync = (program, args) => {
         if (program === '/usr/bin/which') return args[0] === 'node' ? process.execPath : '/opt/homebrew/bin/herdr-app';
-        if (program === '/bin/launchctl' || program === '/usr/bin/plutil') return Buffer.alloc(0);
+        if (program === '/bin/launchctl') {
+          if (args[0] === 'print') {
+            if (++unloadPolls < 3) return Buffer.alloc(0);
+            throw new Error('Service no longer registered');
+          }
+          if (args[0] === 'bootstrap' && unloadPolls < 3)
+            throw new Error('Previous service is still registered');
+          return Buffer.alloc(0);
+        }
+        if (program === '/usr/bin/plutil') return Buffer.alloc(0);
         throw new Error('Unexpected external command: ' + program);
       };
       syncBuiltinESMExports();
