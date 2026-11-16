@@ -17,7 +17,10 @@ It never writes firmware, profiles, keymaps, or ambient lighting.
 Assignments follow Herdr's space/tab/terminal order on startup, then remain
 stable even when statuses or sidebar order change. Ending an agent frees its
 slot for the next unassigned agent. Extra agents wait for an available slot.
-Restarting the bridge assigns slots afresh. Pressing a done agent acknowledges
+Restarting the bridge assigns slots afresh. Green means **done and unread**;
+Herdr changes it to idle when the agent is viewed, including through another
+Herdr client. An already-seen completion is therefore dim white.
+Pressing a done agent acknowledges
 it through Herdr normally, so green becomes idle once Herdr marks it seen.
 
 ## Setup
@@ -36,10 +39,21 @@ remaining keys and encoder are unassigned; the layer uses a dim mint underglow.
 The already-running Herdr bridge supplies the six agent keys' live colors and
 press-to-focus behavior; JSON alone cannot provide live state.
 
-For automatic switching, open the imported layer's settings and use **App linking**,
-then focus Herdr for five seconds and return to Input. App links live in Input's separate linked-app
-registry and are not included by its layer exporter, so this step is manual.
-Your existing ChatGPT layer can remain alongside Herdr.
+Select **Herdr** using its layer number in Input. No layer-settings step is
+required. Your existing ChatGPT layer can remain alongside Herdr.
+
+Input locks the editor and hides layer settings on Creator Micro 2 layers that
+contain any `KV_OAI_` keycode. Its “To edit this layer please use ChatGPT app”
+message also appears on this Herdr layer: the check uses keycodes, not the layer
+name or which app drives the keyboard. The layer can still be selected and used
+with the Herdr bridge; opening ChatGPT is not required for this setup.
+
+Consequently, Input's **App linking** control is unavailable for this imported
+layer. Choose the layer manually. Foreground-app detection in the bridge controls
+USB access; it does not switch the keyboard's active layer. The import file
+already contains the six agent mappings and lighting configuration. Change the
+JSON and reimport it if those settings need to change; retaining the agent
+keycodes also retains Input's editor lock.
 
 This is Input's **layer export** format (`layer.layout.base` with key objects),
 not a raw device `keymap.json` or a profile import. Its shape was checked against
@@ -88,7 +102,10 @@ node install.mjs
 ```
 
 This installs `~/Library/LaunchAgents/dev.herdr.micro2.plist` in the current
-user's GUI session. It runs the default foreground-app mode, using this checkout,
+user's GUI session. It runs in background mode so completed agents turn green while Herdr is behind
+other apps, and agent keys bring Herdr forward. Use this service with the other
+agent-key integration stopped, since both can write the same six lights. It uses
+this checkout,
 the current `node` command path, and the detected `herdr-app` path. Keep the
 checkout and its installed dependencies in place. After moving it or changing
 Node/Herdr paths, rerun the installer. Logs are in

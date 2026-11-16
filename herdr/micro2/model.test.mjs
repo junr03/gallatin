@@ -30,7 +30,7 @@ test('extract local and remote agents without allocating ordinary shell terminal
 test('all four Herdr states and unused slots have distinct lighting', () => {
   const slots = assignSlots([], ['working', 'blocked', 'done', 'idle'].map((s, i) => agent(`t${i}`, s)));
   const payload = lighting(slots);
-  assert.deepEqual(payload.map(p => p.c), [0x0060ff, 0xff6a00, 0x00ff30, 0x101010, 0, 0]);
+  assert.deepEqual(payload.map(p => p.c), [0x0060ff, 0xff6a00, 0x00ff30, 0x606060, 0, 0]);
   assert.deepEqual(payload.map(p => p.e), [4, 4, 1, 1, 0, 0]);
 });
 test('only the six agent key down events focus a session', () => {
