@@ -2,7 +2,7 @@ const colors = {
   working: { c: 0x0060ff, e: 4, s: 0.55 },
   blocked: { c: 0xff6a00, e: 4, s: 0.35 },
   done: { c: 0x00ff30, e: 1, s: 0.5 },
-  idle: { c: 0x101010, e: 1, s: 0.5 },
+  idle: { c: 0x606060, e: 1, s: 0.5 },
 };
 
 // Use the app's machine-qualified addresses, including for remote sub-agents.
