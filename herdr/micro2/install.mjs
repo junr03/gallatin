@@ -35,7 +35,7 @@ if (process.argv.includes('--uninstall')) {
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0"><dict>
 <key>Label</key><string>${label}</string>
-<key>ProgramArguments</key><array><string>${xml(node)}</string><string>${xml(bridge)}</string></array>
+<key>ProgramArguments</key><array><string>${xml(node)}</string><string>${xml(bridge)}</string><string>--background</string></array>
 <key>RunAtLoad</key><true/>
 <key>KeepAlive</key><true/>
 <key>ThrottleInterval</key><integer>10</integer>

@@ -17,7 +17,10 @@ It never writes firmware, profiles, keymaps, or ambient lighting.
 Assignments follow Herdr's space/tab/terminal order on startup, then remain
 stable even when statuses or sidebar order change. Ending an agent frees its
 slot for the next unassigned agent. Extra agents wait for an available slot.
-Restarting the bridge assigns slots afresh. Pressing a done agent acknowledges
+Restarting the bridge assigns slots afresh. Green means **done and unread**;
+Herdr changes it to idle when the agent is viewed, including through another
+Herdr client. An already-seen completion is therefore dim white.
+Pressing a done agent acknowledges
 it through Herdr normally, so green becomes idle once Herdr marks it seen.
 
 ## Setup
@@ -99,7 +102,10 @@ node install.mjs
 ```
 
 This installs `~/Library/LaunchAgents/dev.herdr.micro2.plist` in the current
-user's GUI session. It runs the default foreground-app mode, using this checkout,
+user's GUI session. It runs in background mode so completed agents turn green while Herdr is behind
+other apps, and agent keys bring Herdr forward. Use this service with the other
+agent-key integration stopped, since both can write the same six lights. It uses
+this checkout,
 the current `node` command path, and the detected `herdr-app` path. Keep the
 checkout and its installed dependencies in place. After moving it or changing
 Node/Herdr paths, rerun the installer. Logs are in
