@@ -1,6 +1,15 @@
 # Shared LazyVim configuration
 
-Import this module into a Home Manager user:
+Gallatin contains the full [LazyVim starter](https://github.com/LazyVim/starter)
+at commit `803bc181d7c0d6d5eeba9274d9be49b287294d99`. All tracked starter files
+are included unchanged under `config/`, including options, keymaps, autocmds,
+the disabled plugin examples, editor tooling configuration, and license.
+No optional extras or personal mappings are enabled.
+
+## Install on both hosts
+
+Import this module into each host's Home Manager user and pin both hosts to
+the same Gallatin revision:
 
 ```nix
 home-manager.users.junr03.imports = [
@@ -8,29 +17,48 @@ home-manager.users.junr03.imports = [
 ];
 ```
 
-The previous `vim/home-manager.nix` path forwards to this module. Remove any
-host-local `programs.vim` configuration when migrating. Gallatin no longer
-enables Vim or installs its old plugins and mappings.
+The old `vim/home-manager.nix` import forwards to this module. Remove any
+host-local `programs.vim` configuration. Gallatin no longer enables Vim or
+installs its former plugins and mappings. Neovim becomes the default editor,
+and `vi` and `vim` launch Neovim.
 
-The module installs Neovim, sets it as the default editor, and provides `vi`
-and `vim` aliases. It includes Git, curl, fd, ripgrep, lazygit, tree-sitter,
-a C compiler, and unzip. Use a host package set with Neovim 0.11.2 or newer,
-as required by [LazyVim](https://www.lazyvim.org/). Configure a Nerd Font in
-your terminal for icons.
+Home Manager links the complete starter configuration, installs writable
+copies of the shared `lazy-lock.json` and `lazyvim.json`, and runs
+`nvim --headless '+Lazy! restore'` to install or restore the locked plugins.
+Activation requires network access and verifies that installed plugin commits
+match Gallatin's lockfile. The Lua files remain read-only; the lockfile and
+extras selection remain writable for LazyVim's normal commands.
 
-After updating the host's Gallatin input and activating Home Manager, run
-`nvim`. The first launch needs network access to download lazy.nvim, LazyVim,
-and its plugins. Run `:LazyHealth` afterward to check the installation.
-Language servers and formatters use LazyVim's normal Mason workflow; on
-NixOS, tools that require system libraries may need host-managed packages.
+Existing unmanaged files that collide with starter files must be moved aside
+before activation. Existing plugin downloads and caches are retained.
+Activation replaces local lockfile and extras selections with Gallatin's
+copies, so save experiments you want to keep before activating again.
 
-Home Manager owns only `init.lua` and `lua/config/lazy.lua`. Existing files at
-those paths must be moved aside before activation if Home Manager does not
-already manage them. Plugin downloads, LazyVim extras metadata, caches, and
-the writable lockfile (`stdpath("state")/lazy-lock.json`) stay outside the
-Nix store. Plugin versions follow LazyVim's upstream defaults and are locked
-per host, rather than pinned by Gallatin.
+Use a host package set with Neovim 0.11.2 or newer and configure a Nerd Font
+in the terminal for icons. The module includes Git, curl, fd, ripgrep,
+lazygit, tree-sitter, a C compiler, tar, gzip, and unzip. Language servers,
+formatters, and parser builds use LazyVim's normal runtime workflow; their
+binaries are not pinned by the plugin lockfile. NixOS may need host-managed
+packages for tools that require system libraries.
 
-The old comma-leader mappings are replaced by LazyVim defaults: Space is the
-leader, `Space e` opens the explorer, and `Space` opens keybinding hints.
-See the [LazyVim keymaps](https://www.lazyvim.org/keymaps) for the full set.
+## Configure once in Gallatin
+
+Edit these files, submit a Gallatin PR, then update both hosts to its revision
+and activate Home Manager:
+
+- `config/lua/config/options.lua`: editor options.
+- `config/lua/config/keymaps.lua`: key mappings.
+- `config/lua/config/autocmds.lua`: autocommands.
+- `config/lua/plugins/*.lua`: plugins and overrides. The starter's `example.lua`
+  remains disabled until you deliberately enable or replace it.
+- `lazyvim.json`: shared optional extras selection.
+- `lazy-lock.json`: shared plugin commits.
+
+You can experiment with `:LazyExtras` and `:Lazy update`. To keep the results,
+copy `~/.config/nvim/lazyvim.json` and `~/.config/nvim/lazy-lock.json` back to
+this directory, review the diff, and commit them. These paths assume the
+default XDG configuration directory. Both hosts then restore those choices
+on their next activation. Reopen Neovim after activation if it was running.
+
+Run `:LazyHealth` for interactive health checks. Space is the starter's
+leader; see the [LazyVim keymaps](https://www.lazyvim.org/keymaps).
