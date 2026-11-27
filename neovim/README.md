@@ -17,8 +17,8 @@ home-manager.users.junr03.imports = [
 ];
 ```
 
-The old `vim/home-manager.nix` import forwards to this module. Remove any
-host-local `programs.vim` configuration. Gallatin no longer enables Vim or
+Replace existing `vim/home-manager.nix` imports with the path above and remove
+any host-local `programs.vim` configuration. Gallatin no longer enables Vim or
 installs its former plugins and mappings. Neovim becomes the default editor,
 and `vi` and `vim` launch Neovim.
 
